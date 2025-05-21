@@ -10,12 +10,22 @@ from time import sleep
 
 
 def run_whisper_live_transcription(
-    model_name="tiny",
-    non_english=False,
-    energy_threshold=1000,
-    record_timeout=2.0,
-    phrase_timeout=3.0,
+        model_name="tiny",
+        non_english=False,
+        energy_threshold=1000,
+        record_timeout=2.0,
+        phrase_timeout=3.0,
+        silence_timeout=5.0  # NEW: stop after this many seconds of silence
 ):
+    from datetime import datetime, timedelta
+    import os
+    import numpy as np
+    import speech_recognition as sr
+    import whisper
+    import torch
+    from queue import Queue
+    from time import sleep
+
     phrase_time = None
     data_queue = Queue()
     phrase_bytes = bytes()
@@ -46,6 +56,12 @@ def run_whisper_live_transcription(
     try:
         while True:
             now = datetime.utcnow()
+
+            # If silence has lasted too long, break
+            if phrase_time and now - phrase_time > timedelta(seconds=silence_timeout):
+                print("\nSilence timeout reached.")
+                return transcription
+
             if not data_queue.empty():
                 phrase_complete = False
                 if phrase_time and now - phrase_time > timedelta(seconds=phrase_timeout):
@@ -73,5 +89,6 @@ def run_whisper_live_transcription(
             else:
                 sleep(0.25)
     except KeyboardInterrupt:
-        return transcription
+        print("\nStopped by user.")
 
+    return transcription
