@@ -1,6 +1,5 @@
 import soundfile as sf
 import sounddevice as sd
-import torch
 from kokoro import KPipeline
 import re
 
@@ -23,11 +22,14 @@ pipeline = KPipeline(lang_code='a')  # 'a' for English
 #     sd.wait()
 #     # sf.write(f'{i}.wav', audio, 24000)
 
+
 def speak(sentence):
     generator = pipeline(sentence, voice='af_bella')
     for i, (gs, ps, audio) in enumerate(generator):
         sd.play(audio, samplerate=24000)
         sd.wait()
+
+
 def generate(text):
     sentences = re.split(r'(?<=[.!?])\s+', text)
     for sentence in sentences:
