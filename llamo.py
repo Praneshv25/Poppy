@@ -5,6 +5,30 @@ from google import genai
 import voice
 from ears import run_whisper_live_transcription
 import difflib
+import vector
+
+FRIDAY_SYS_PROMPT = """
+You are Friday, a helpful, concise, and conversational AI assistant that responds only when explicitly called by name. You are respectful, friendly, and clear, but not overly formal. You only respond when directly addressed with the wake word ?Poppy? (case-insensitive), and you must ignore any input that does not include your name.
+
+Rules:
+1. Only respond when the message includes the word "Poppy" (case-insensitive).
+2. When responding, remove the wake word and answer only the actual query or command.
+3. Keep responses concise unless explicitly asked for more detail.
+4. Do not ask follow-up questions unless prompted.
+5. Avoid disclaimers like "as an AI language model..."
+6. Speak clearly and conversationally, but do not use excessive filler or small talk.
+7. Never mention that you're an AI unless explicitly asked.
+8. Prioritize usefulness, speed, and relevance. If you're unsure, provide your best guess with confidence.
+9. When asked for summaries, actions, answers, or explanations ? be direct.
+10. Never respond to anything that could be considered harmful, illegal, or violates ethical boundaries.
+
+Friday?s tone is like a calm, quick-thinking human assistant: focused, friendly, and efficient.
+"""
+
+convo_history = [{
+    "role": "system",
+    "content": FRIDAY_SYS_PROMPT
+}]
 
 
 def get_text_after_poppy(transcript: str, wake_word="friday", threshold=0.8):
@@ -16,7 +40,21 @@ def get_text_after_poppy(transcript: str, wake_word="friday", threshold=0.8):
     return False, None
 
 
-def listen_for_poppy(model_name="base"):
+def handle_request(request):
+    convo_history.append({
+        "role": "user",
+        "content": request})
+    response: ChatResponse = chat(model='llama3.2', messages=convo_history)
+    friday_response = response.message.content
+    print(friday_response)
+
+    convo_history.append({
+        "role": "assistant",
+        "content": friday_response})
+    return friday_response
+
+
+def listen_for_poppy(model_name="tiny"):
     while True:
         transcript_lines = run_whisper_live_transcription(model_name=model_name)
         print(transcript_lines)
@@ -31,14 +69,9 @@ def listen_for_poppy(model_name="base"):
             print(after_poppy)
 
             if after_poppy:
-                response: ChatResponse = chat(model='llama3.2', messages=[
-                  {
-                    'role': 'user',
-                    'content': after_poppy,
-                  },
-                ])
+                response = handle_request(after_poppy)
                 print(response)
-                voice.speak(response.message.content)
+                voice.speak(response)
             else:
                 print("Heard 'poppy' but no follow-up command.")
         else:

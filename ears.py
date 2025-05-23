@@ -17,15 +17,6 @@ def run_whisper_live_transcription(
         phrase_timeout=3.0,
         silence_timeout=5.0  # NEW: stop after this many seconds of silence
 ):
-    from datetime import datetime, timedelta
-    import os
-    import numpy as np
-    import speech_recognition as sr
-    import whisper
-    import torch
-    from queue import Queue
-    from time import sleep
-
     phrase_time = None
     data_queue = Queue()
     phrase_bytes = bytes()
