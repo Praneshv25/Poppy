@@ -1,30 +1,51 @@
-import torch
-import open_clip
-from PIL import Image
-import torchvision.transforms as T
-
 import cv2
+import ollama
+import time
+import os
+import atexit
 
-cap = cv2.VideoCapture(0)  # 0 for default webcam
+
+cap = cv2.VideoCapture(0)
 
 
-def getVision():
+def capture_image(filename="frame.jpg"):
     ret, frame = cap.read()
+
     if not ret:
-        return None
+        raise RuntimeError("Failed to capture image from webcam.")
+
+    cv2.imwrite(filename, frame)
+    print(f"[?] Captured image: {filename}")
+    return filename
 
 
-    cap.release()
-    cv2.destroyAllWindows()
+def describe_image_with_llava(image_path):
+    print("[?] Sending image to LLaVA...")
 
-    model, _, preprocess = open_clip.create_model_and_transforms('ViT-B-32', pretrained='laion2b_s34b_b79k')
-    tokenizer = open_clip.get_tokenizer('ViT-B-32')
+    response = ollama.chat(
+        model='moondream',
+        messages=[
+            {
+                'role': 'user',
+                'content': 'Describe this image.',
+                'images': [image_path]
+            }
+        ]
+    )
 
-    image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
-    image_input = preprocess(image).unsqueeze(0)
+    description = response['message']['content']
+    print("\n[?] Assistant:", description)
+    return description
 
-    with torch.no_grad():
-        image_features = model.encode_image(image_input)
-        print(image_features)
 
-getVision()
+def cleanup():
+    if cap.isOpened():
+        cap.release()
+        print("[?] Webcam released.")
+
+
+atexit.register(cleanup)
+
+if __name__ == "__main__":
+    image_file = capture_image("vision_input.jpg")
+    describe_image_with_llava(image_file)
