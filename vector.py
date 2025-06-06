@@ -25,6 +25,16 @@ def add_document(doc_text):
     collection.add(documents=[doc_text], ids=[doc_id])
     print(f"Added document with ID: {doc_id}")
 
+
+def retrieve_context(query, n=3):
+    results = collection.query(
+        query_texts=[query],
+        n_results=n
+    )
+    matches = results.get("documents", [[]])[0]  # top list of matches
+    return matches
+
+
 # collection.add(
 #     documents=[
 #         "This is a document about pineapple",
