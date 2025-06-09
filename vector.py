@@ -35,6 +35,27 @@ def retrieve_context(query, n=3):
     return matches
 
 
+def get_all_documents():
+    """
+    Retrieves and returns all documents currently stored in the ChromaDB collection.
+    """
+    all_entries = collection.get(
+        ids=collection.get()['ids'],
+        include=['documents', 'metadatas']
+    )
+    return all_entries['documents']
+
+
+# Debug code
+# if __name__ == "__main__":
+#     print("All documents in ChromaDB:")
+#     documents = get_all_documents()
+#     if documents:
+#         for i, doc in enumerate(documents):
+#             print(f"Document {i+1}: {doc}")
+#     else:
+#         print("No documents found in the collection.")
+
 # collection.add(
 #     documents=[
 #         "This is a document about pineapple",
