@@ -1,0 +1,40 @@
+### Comprehensive Plan: YOLO Vision for Object Detection and Action Determination
+
+**Goal:** Enable Friday to perceive objects using YOLO, combine this with LLava's scene understanding, and allow the LLM to determine specific digital or physical actions based on visual context and user queries.
+
+**Phase 1: YOLO Integration and Enhanced Vision in `eyes.py`**
+
+1.  **Install YOLO Library**:
+    *   We will install the `ultralytics` library, which provides an easy-to-use interface for YOLOv8 models.
+    *   *Command:* `pip install ultralytics`
+
+2.  **Adapt `eyes.py` for Video Stream Processing**:
+    *   Modify `eyes.py` to capture frames from a video stream (e.g., using OpenCV's `cv2.VideoCapture`). The current `capture_image` will be adapted to capture a single frame from this stream.
+    *   Implement a function to load the YOLO model.
+
+3.  **Implement YOLO Object Detection**:
+    *   Add a new function, e.g., `get_yolo_objects_summary(image_path)`, that takes an image, runs YOLO inference, and returns a concise natural language summary of detected objects (e.g., "Detected: a person, a bed, a lamp"). This summary will be suitable for LLM consumption.
+
+4.  **Combine Vision Outputs**:
+    *   Modify the existing vision pipeline in `eyes.py` (or `escribir.py` where `describe_image_with_llava` is called) to combine:
+        *   The general scene description from LLava (`describe_image_with_llava`).
+        *   The specific object summary from YOLO (`get_yolo_objects_summary`).
+    *   This combined string will form the comprehensive `vision_desc` that is subsequently fed to the LLM.
+
+**Phase 2: LLM Action Determination in `escribir.py`**
+
+1.  **Update `FRIDAY_SYS_PROMPT`**:
+    *   Refine Friday's system prompt to instruct the `llama3.2` model on how to interpret the combined visual context (LLava + YOLO).
+    *   Crucially, we will add rules for the LLM to determine and output specific digital or physical actions.
+
+2.  **Modify JSON Output Format**:
+    *   Introduce a new field in the strict JSON output format (e.g., `"action": {"type": "digital" | "physical", "command": "..."}` or a simpler `"action_command": "..."`) to allow the LLM to specify the determined action. This will make the action machine-readable.
+
+3.  **Action Reasoning Logic**:
+    *   Within `process_user_request` in `escribir.py`, after the LLM's response is parsed, we will extract the `action` field (if present).
+    *   This extracted action can then be logged or passed to a future "action execution" module.
+
+**Phase 3: Future Considerations (Beyond Current Task)**
+
+*   **Task Scheduling/Management**: The "wake me up at 8 am" scenario implies a need for a separate task scheduling system (e.g., using SQLite as discussed, or a dedicated scheduler) that can trigger Friday's actions at specific times.
+*   **Action Execution**: Implementing the actual execution of digital actions (e.g., smart home API calls) and physical actions (e.g., robot movement commands) will require further integration with external systems or robotic frameworks. This is a significant undertaking that would follow the LLM's ability to *determine* the action.

@@ -20,19 +20,22 @@ chroma_client = chromadb.PersistentClient(path="/Users/PV/PycharmProjects/meLlam
 collection = chroma_client.get_or_create_collection(name="pvels", embedding_function=embedding_function)
 
 
-def add_document(doc_text):
-    doc_id = str(uuid.uuid4())
+def add_document(doc_text, doc_id=None):
+    if doc_id is None:
+        doc_id = str(uuid.uuid4())
     collection.add(documents=[doc_text], ids=[doc_id])
     print(f"Added document with ID: {doc_id}")
+    return doc_id # Return the doc_id so it can be stored in task_manager
 
 
 def retrieve_context(query, n=3):
     results = collection.query(
         query_texts=[query],
-        n_results=n
+        n_results=n,
+        include=['documents'] # Only include documents, as 'ids' is not a valid include parameter
     )
-    matches = results.get("documents", [[]])[0]  # top list of matches
-    return matches
+    # The results object itself contains the 'ids' of the matched documents
+    return results.get("documents", [[]])[0], results.get("ids", [[]])[0]
 
 
 def get_all_documents():
