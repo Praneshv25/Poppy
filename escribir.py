@@ -111,7 +111,7 @@ def handle_request(request):
         "content": request
     })
 
-    response: ChatResponse = chat(model='llama3.2:1b', messages=convo_history)
+    response: ChatResponse = chat(model='llama3.1:8b', messages=convo_history)
     reply = response.message.content.strip()
 
     try:
@@ -222,7 +222,7 @@ def parse_task_details(text):
         due_date = date_match.group(2)
         description = description.replace(date_match.group(0), '').strip()
 
-    # Regex for due time (HH:MM or HH:MM:SS)
+    # Regex for due time (HH:MM or HH:MM:SS)Wh
     time_match = re.search(r'\b(at)\s+(\d{1,2}:\d{2}(?::\d{2})?)\b', text, re.IGNORECASE)
     if time_match:
         due_time = time_match.group(2)
