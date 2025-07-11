@@ -37,6 +37,7 @@ except FileNotFoundError:
     print("Error: libra_system_prompt.txt not found. Please create the file with the system prompt content.")
     system_prompt = "" # Fallback to empty string or a default prompt
 
+print(system_prompt)
 # === INITIAL STATE ===
 conversation_history = []
 listening = True
