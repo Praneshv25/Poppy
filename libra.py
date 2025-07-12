@@ -4,8 +4,16 @@ import google.genai as genai
 from google.genai.types import GenerateContentConfig, SafetySetting, HarmCategory, HarmBlockThreshold
 import cv2
 import base64
+import json
+import time
+import threading
+from dataclasses import dataclass
+from typing import Optional, List, Dict, Any
 
-# === VOICE SETUP ===
+# === IMPORT SERVO CONTROLLER ===
+from ServoController import ServoController
+
+# === ENHANCED VOICE SETUP ===
 engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 rate = engine.getProperty('rate')
@@ -21,32 +29,31 @@ generation_config = GenerateContentConfig(
     max_output_tokens=8192,
 )
 
-# safety_settings = [
-#     SafetySetting(HarmCategory.HARM_CATEGORY_HARASSMENT, HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE),
-#     SafetySetting(HarmCategory.HARM_CATEGORY_HATE_SPEECH, HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE),
-#     SafetySetting(HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE),
-#     SafetySetting(HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE),
-# ]
-
 # === SYSTEM PROMPT ===
-# Load system prompt from an external file
 try:
     with open('libra_system_prompt.txt', 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: libra_system_prompt.txt not found. Please create the file with the system prompt content.")
-    system_prompt = "" # Fallback to empty string or a default prompt
+    system_prompt = ""
 
-print(system_prompt)
+print("System prompt loaded successfully" if system_prompt else "Using fallback system prompt")
+
+# === ROBOT CONTROLLER INITIALIZATION ===
+servo_controller = ServoController()
+
 # === INITIAL STATE ===
 conversation_history = []
 listening = True
 sending_to_gemini = False
 wake_word = "gemini"
 exit_words = ["exit", "stop", "quit", "bye", "goodbye"]
+pending_followup = None
+followup_timer = None
 
 # === CAMERA SETUP ===
 cam = cv2.VideoCapture(0)
+
 
 def get_frame_data():
     ret, frame = cam.read()
@@ -57,16 +64,122 @@ def get_frame_data():
     _, buffer = cv2.imencode('.jpg', resized)
     return base64.b64encode(buffer).decode('utf-8')
 
-# === GEMINI REQUEST FUNCTION ===
-def get_response(user_input):
+
+# === MOTION EXECUTION SYSTEM ===
+def execute_motion_sequence(actions: List[Dict[str, Any]]) -> bool:
+    """Execute a sequence of robot actions"""
+    print(f"Executing {len(actions)} actions...")
+
+    for i, action in enumerate(actions):
+        print(f"Action {i + 1}: {action.get('type', 'unknown')}")
+
+        if action.get('type') == 'motor':
+            command = action.get('command')
+            args = action.get('args', [])
+
+            # Map commands to servo controller methods
+            if command == 'move_up' and args:
+                servo_controller.move_up(args[0])
+            elif command == 'move_down' and args:
+                servo_controller.move_down(args[0])
+            elif command == 'move_forward' and args:
+                servo_controller.move_forward(args[0])
+            elif command == 'move_backward' and args:
+                servo_controller.move_backward(args[0])
+            elif command == 'move_left' and args:
+                servo_controller.move_left(args[0])
+            elif command == 'move_right' and args:
+                servo_controller.move_right(args[0])
+            elif command == 'move_servo' and len(args) >= 2:
+                servo_controller.move_servo(args[0], args[1])
+            elif command == 'hold_position' and args:
+                servo_controller.hold_position(args[0])
+            else:
+                print(f"Unknown motor command: {command}")
+
+        elif action.get('type') == 'wait':
+            duration = action.get('duration', 1.0)
+            time.sleep(duration)
+
+        elif action.get('type') == 'vision_check':
+            # Placeholder for vision processing
+            print(f"Vision check: {action.get('target', 'general')}")
+
+        # Brief pause between actions for safety
+        time.sleep(0.1)
+
+    return True
+
+
+def parse_ai_response(response_text: str) -> Optional[Dict[str, Any]]:
+    """Parse AI response and extract structured data"""
+    try:
+        # Look for JSON structure in the response
+        start_idx = response_text.find('{')
+        if start_idx == -1:
+            return None
+
+        # Find the matching closing brace
+        brace_count = 0
+        end_idx = -1
+        for i in range(start_idx, len(response_text)):
+            if response_text[i] == '{':
+                brace_count += 1
+            elif response_text[i] == '}':
+                brace_count -= 1
+                if brace_count == 0:
+                    end_idx = i
+                    break
+
+        if end_idx == -1:
+            return None
+
+        json_str = response_text[start_idx:end_idx + 1]
+        return json.loads(json_str)
+
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error: {e}")
+        return None
+    except Exception as e:
+        print(f"Response parsing error: {e}")
+        return None
+
+
+def schedule_followup(followup_prompt: str, delay: float = 3.0):
+    """Schedule a followup prompt after motion completion"""
+    global pending_followup, followup_timer
+
+    def execute_followup():
+        global pending_followup
+        if pending_followup:
+            print(f"Follow-up: {pending_followup}")
+            engine.say(pending_followup)
+            engine.runAndWait()
+            pending_followup = None
+
+    if followup_timer:
+        followup_timer.cancel()
+
+    pending_followup = followup_prompt
+    followup_timer = threading.Timer(delay, execute_followup)
+    followup_timer.start()
+
+
+# === ENHANCED GEMINI REQUEST FUNCTION ===
+def get_response(user_input: str) -> str:
     global conversation_history
 
     frame_data = get_frame_data()
     if not frame_data:
         return "Camera input failed."
 
+    # Include current robot state in the prompt
+    robot_state = servo_controller.get_current_state()
+    state_info = f"Current robot state: elevation_servo_pos={robot_state['elevation_servo_pos']}, translation_servo_pos={robot_state['translation_servo_pos']}, rotation_stepper_deg={robot_state['rotation_stepper_deg']}"
+
     vision_parts = [
-        {"text": "User command: " + user_input},
+        {"text": f"User command: {user_input}"},
+        {"text": state_info},
         {"text": "Here is the current visual scene."},
         {"inline_data": {
             "mime_type": "image/jpeg",
@@ -79,20 +192,48 @@ def get_response(user_input):
     response = client.models.generate_content(
         model="gemini-2.5-flash",
         contents=conversation_history,
-        # config=generation_config,
         config=GenerateContentConfig(
-            system_instruction= system_prompt)
-        # safety_settings=safety_settings
+            system_instruction=system_prompt,
+            temperature=0.8,
+            top_p=0.9,
+            top_k=40,
+            max_output_tokens=8192,
+        )
     )
 
     gemini_reply = response.text
     print("Gemini:", gemini_reply)
 
-    conversation_history.append({"role": "model", "parts": [{"text": gemini_reply}]})
-    return gemini_reply
+    # Parse structured response
+    structured_response = parse_ai_response(gemini_reply)
+
+    if structured_response:
+        print("Parsed structured response successfully")
+
+        # Execute motion sequence if present
+        actions = structured_response.get('actions', [])
+        if actions:
+            threading.Thread(target=execute_motion_sequence, args=(actions,)).start()
+
+        # Schedule followup if needed
+        if structured_response.get('requires_followup') and structured_response.get('followup_prompt'):
+            schedule_followup(structured_response.get('followup_prompt'), 3.0)
+
+        # Return voice response for TTS
+        voice_response = structured_response.get('voice_response', gemini_reply)
+        conversation_history.append({"role": "model", "parts": [{"text": voice_response}]})
+        return voice_response
+    else:
+        # Fallback to original response if parsing fails
+        conversation_history.append({"role": "model", "parts": [{"text": gemini_reply}]})
+        return gemini_reply
+
 
 # === MAIN LOOP ===
 recognizer = sr.Recognizer()
+
+print("Robot control system initialized. Say 'gemini' to start interaction.")
+print("Current robot state:", servo_controller.get_current_state())
 
 while listening:
     with sr.Microphone() as source:
@@ -105,6 +246,8 @@ while listening:
 
             if any(word in response.lower() for word in exit_words):
                 sending_to_gemini = False
+                if followup_timer:
+                    followup_timer.cancel()
                 print("Stopped sending responses to Gemini.")
                 continue
 
@@ -114,6 +257,11 @@ while listening:
                 continue
 
             if sending_to_gemini:
+                # Cancel any pending followup when user speaks
+                if followup_timer:
+                    followup_timer.cancel()
+                    pending_followup = None
+
                 reply = get_response(response)
                 engine.setProperty('rate', 200)
                 engine.setProperty('volume', volume)
@@ -127,3 +275,8 @@ while listening:
             print(f"Speech Recognition error: {e}")
         except Exception as e:
             print(f"Unexpected error: {e}")
+
+# Cleanup
+cam.release()
+cv2.destroyAllWindows()
+servo_controller.close()

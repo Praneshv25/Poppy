@@ -13,12 +13,14 @@ import time
 
 
 controller = sc.ServoController()
-# controller.move_up(99)
+# controller.move_up(20)
 
 # controller.move_down(20)
 
-# controller.move_forward(60)
-controller.move_stepper('left', 45)
+# controller.move_forward(20)
+# controller.move_servo(8, 0)
+controller.move_servo(0, 0)
+# controller.move_stepper('left', 45)
 # sc = ServoController()
 #
 # sc.move_servo(0, 75)          # Move servo channel 0 to 75%
