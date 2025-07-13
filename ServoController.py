@@ -142,7 +142,7 @@ class ServoController:
             return False
 
         if degrees is not None:
-            steps = degrees * 1000 // 360
+            steps = degrees * 1000 // 180
             new_step_deg = self.rotation_stepper_deg - degrees if direction == 'left' else self.rotation_stepper_deg + degrees
             if new_step_deg < MIN_STEPPER_DEG or new_step_deg > MAX_STEPPER_DEG:
                 return False
