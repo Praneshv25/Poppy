@@ -1,0 +1,44 @@
+# The base model to fine-tune
+base_model: mistralai/Mistral-7B-Instruct-v0.3
+model_type: MistralForCausalLM
+tokenizer_type: LlamaTokenizer
+
+# Use QLoRA to load the model in 4-bit for memory efficiency
+load_in_4bit: true
+gptq: false # Not using GPTQ
+
+# === DATASET CONFIGURATION ===
+datasets:
+  - path: dataset.jsonl # Path to your dataset file
+    type: alpaca # The instruction/input/output format
+sequence_len: 2048
+val_set_size: 0.05 # Use 5% of the data for validation
+
+# === LORA CONFIGURATION ===
+use_lora: true
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - down_proj
+  - up_proj
+
+# === TRAINING PARAMETERS ===
+bf16: true
+num_epochs: 3
+micro_batch_size: 2
+gradient_accumulation_steps: 4
+learning_rate: 0.0002
+optimizer: paged_adamw_8bit
+lr_scheduler: cosine
+
+# === SAVING & LOGGING ===
+output_dir: ./herbie-finetune-output # Where to save the LoRA adapter
+save_steps: 100
+logging_steps: 10

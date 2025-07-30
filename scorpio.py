@@ -12,6 +12,7 @@ from typing import Optional, List, Dict, Any
 import ollama
 import openai
 import base64
+from llama_cpp import Llama
 
 # === IMPORT SERVO CONTROLLER ===
 from ServoController import ServoController
@@ -24,6 +25,10 @@ engine = pyttsx3.init()
 voices = engine.getProperty('voices')
 rate = engine.getProperty('rate')
 volume = engine.getProperty('volume')
+llm = Llama.from_pretrained(
+	repo_id="ggml-org/SmolVLM-500M-Instruct-GGUF",
+	filename="SmolVLM-500M-Instruct-Q8_0.gguf",
+)
 
 # === GEMINI CLIENT SETUP ===
 client = genai.Client(api_key="AIzaSyDosNbIypDa8kk3LLIWrVNGPwYkzj9V0UE")  # <-- Replace with your Gemini API key
@@ -37,7 +42,7 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    with open('libra_system_prompt.txt', 'r') as f:
+    with open('scorpio_system_prompt.txt', 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: libra_system_prompt.txt not found. Please create the file with the system prompt content.")
@@ -72,26 +77,21 @@ def get_frame_data():
 
 
 def get_scene_description_from_smolvlm(image_bytes: bytes) -> str:
-    # base64-encode the image for the OpenAI-compatible API
     encoded_image = base64.b64encode(image_bytes).decode('utf-8')
-
-    prompt = "Describe the image in detail for a robot assistant."
-
+    prompt = (
+        "Describe the image in detail for a robot assistant.\n"
+        f"<image>{encoded_image}</image>"
+    )
     try:
-        print("Sending image to SmolVLM llama.cpp server...")
-        response = openai.ChatCompletion.create(
-            model="smolvlm",  # name doesn't matter much
-            messages=[
-                {"role": "user", "content": [
-                    {"type": "text", "text": prompt},
-                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
-                ]}
-            ],
+        print("Sending image to llama-cpp (direct)...")
+        output = llm.create_chat_completion(
+            messages=[{"role": "user", "content": prompt}],
             temperature=0.3
         )
-        return response['choices'][0]['message']['content']
+
+        return output['choices'][0]['message']['content']
     except Exception as e:
-        print("SmolVLM error:", e)
+        print("llama-cpp error:", e)
         return "Unable to describe the scene."
 
 # === MOTION EXECUTION SYSTEM ===
