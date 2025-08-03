@@ -5,7 +5,6 @@ from typing import Dict
 MIN_STEPPER_DEG = -180
 MAX_STEPPER_DEG = 180
 
-
 class ServoController:
     def __init__(self, port='/dev/tty.usbmodem1101', baud=9600, delay=2):
         self.port = port
@@ -142,7 +141,7 @@ class ServoController:
             return False
 
         if degrees is not None:
-            steps = degrees * 1000 // 180
+            steps = degrees * 1000 // 360
             new_step_deg = self.rotation_stepper_deg - degrees if direction == 'left' else self.rotation_stepper_deg + degrees
             if new_step_deg < MIN_STEPPER_DEG or new_step_deg > MAX_STEPPER_DEG:
                 return False
