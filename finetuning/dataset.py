@@ -3,11 +3,6 @@ from google.genai.types import GenerateContentConfig
 import json
 import os
 
-# --- CONFIGURATION ---
-# IMPORTANT: Replace with your actual Google AI API key
-# You can get a key from https://aistudio.google.com/
-# API_KEY = "YOUR_API_KEY"
-
 # The number of unique training examples you want to generate
 NUM_EXAMPLES_TO_GENERATE = 5
 
@@ -386,7 +381,7 @@ def generate_dataset():
     #     return
 
     print("Configuring generative AI client...")
-    client = genai.Client(api_key="AIzaSyDosNbIypDa8kk3LLIWrVNGPwYkzj9V0UE")
+    client = genai.Client(api_key=os.getenv("API_KEY"))
     # genai.configure(api_key=API_KEY)
     # model = genai.GenerativeModel('gemini-1.5-pro-latest')
 

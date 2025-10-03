@@ -5,6 +5,7 @@ from google.genai.types import GenerateContentConfig, SafetySetting, HarmCategor
 import cv2
 import base64
 import json
+import os
 import time
 import threading
 from dataclasses import dataclass
@@ -20,7 +21,7 @@ rate = engine.getProperty('rate')
 volume = engine.getProperty('volume')
 
 # === GEMINI CLIENT SETUP ===
-client = genai.Client(api_key="AIzaSyDosNbIypDa8kk3LLIWrVNGPwYkzj9V0UE")
+client = genai.Client(api_key=os.getenv("API_KEY"))
 
 generation_config = GenerateContentConfig(
     temperature=0.8,

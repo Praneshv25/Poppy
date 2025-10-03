@@ -6,6 +6,7 @@ import cv2
 import base64
 import json
 import time
+import os
 import threading
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
@@ -20,7 +21,7 @@ rate = engine.getProperty('rate')
 volume = engine.getProperty('volume')
 
 # === GEMINI CLIENT SETUP ===
-client = genai.Client(api_key="AIzaSyDosNbIypDa8kk3LLIWrVNGPwYkzj9V0UE")  # <-- Replace with your Gemini API key
+client = genai.Client(api_key=os.getenv("API_KEY"))
 
 generation_config = GenerateContentConfig(
     temperature=0.8,
@@ -46,7 +47,7 @@ servo_controller = ServoController()
 conversation_history = []
 listening = True
 sending_to_gemini = False
-wake_word = "herbie"
+wake_word = "wake"
 exit_words = ["exit", "stop", "quit", "bye", "goodbye"]
 pending_followup = None
 followup_timer = None
@@ -164,6 +165,22 @@ def schedule_followup(followup_prompt: str, delay: float = 3.0):
     followup_timer = threading.Timer(delay, execute_followup)
     followup_timer.start()
 
+def speak_async(text):
+    def _speak():
+        engine.say(text)
+        engine.runAndWait()
+    threading.Thread(target=_speak).start()
+
+def speak(text, rate=200, volume=1.0, voice_index=0):
+    tts = pyttsx3.init()
+    voices = tts.getProperty('voices')
+    tts.setProperty('rate', rate)
+    tts.setProperty('volume', volume)
+    if voices:
+        tts.setProperty('voice', voices[voice_index].id)
+    tts.say(text)
+    tts.runAndWait()
+    tts.stop()
 
 # === ENHANCED GEMINI REQUEST FUNCTION ===
 def get_response(user_input: str) -> str:
@@ -232,7 +249,7 @@ def get_response(user_input: str) -> str:
 # === MAIN LOOP ===
 recognizer = sr.Recognizer()
 
-print("Robot control system initialized. Say 'gemini' to start interaction.")
+print("Robot control system initialized. Say 'hey' to start interaction.")
 print("Current robot state:", servo_controller.get_current_state())
 
 while listening:
@@ -263,11 +280,13 @@ while listening:
                     pending_followup = None
 
                 reply = get_response(response)
-                engine.setProperty('rate', 200)
-                engine.setProperty('volume', volume)
-                engine.setProperty('voice', voices[0].id)
-                engine.say(reply)
-                engine.runAndWait()
+                # engine.setProperty('rate', 200)
+                # engine.setProperty('volume', volume)
+                # engine.setProperty('voice', voices[0].id)
+                # engine.say(reply)
+                # engine.runAndWait()
+                speak(reply, rate=200, volume=volume, voice_index=0)
+
 
         except sr.UnknownValueError:
             print("Didn't recognize anything.")
