@@ -1,6 +1,10 @@
 from elevenlabs.client import ElevenLabs
 from elevenlabs import stream
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 elevenlabs = ElevenLabs(
   api_key=os.getenv("ELEVENLABS_API_KEY"),

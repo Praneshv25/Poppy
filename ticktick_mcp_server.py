@@ -11,6 +11,7 @@ import os
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 import time
+from dotenv import load_dotenv
 from ticktickToken import get_access_token
 from task import Task
 
@@ -19,6 +20,9 @@ from mcp.server.models import InitializationOptions
 from mcp.server import NotificationOptions, Server
 from mcp.server.stdio import stdio_server
 from mcp import types
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 class TickTickAPI:
@@ -47,7 +51,7 @@ class TickTickAPI:
         data: Optional[Dict] = None,
         params: Optional[Dict] = None
     ) -> Dict[str, Any]:
-        """Make authenticated request to TickTick API."""
+        """Make authenticated request to TickTick API with automatic token refresh on 401."""
         url = f"{self.base_url}/{endpoint}"
         headers = {
             "Authorization": f"Bearer {self.access_token}",
@@ -63,6 +67,23 @@ class TickTickAPI:
                 params=params,
                 timeout=30
             )
+            
+            # If 401, try refreshing token once
+            if response.status_code == 401:
+                try:
+                    self.access_token = get_access_token()
+                    headers["Authorization"] = f"Bearer {self.access_token}"
+                    response = requests.request(
+                        method=method,
+                        url=url,
+                        headers=headers,
+                        json=data,
+                        params=params,
+                        timeout=30
+                    )
+                except Exception as refresh_error:
+                    raise Exception(f"Token refresh failed: {str(refresh_error)}")
+            
             response.raise_for_status()
             return response.json() if response.text else {}
         except requests.exceptions.RequestException as e:

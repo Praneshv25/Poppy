@@ -10,6 +10,10 @@ import time
 import threading
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # === IMPORT SERVO CONTROLLER ===
 from ServoController import ServoController

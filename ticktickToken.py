@@ -7,6 +7,10 @@ import base64
 import os
 import json
 import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Configuration (prefer environment variables; fall back to constants)
 CLIENT_ID = os.getenv("TICKTICK_CLIENT_ID")

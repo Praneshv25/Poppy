@@ -1,4 +1,3 @@
-import speech_recognition as sr
 import voice
 import google.genai as genai
 from google.genai.types import GenerateContentConfig
@@ -10,9 +9,16 @@ import os
 import threading
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # === IMPORT SERVO CONTROLLER ===
 from ServoController import ServoController
+
+# === IMPORT WAKE WORD & TRANSCRIPTION ===
+from wakeWord.wake import listen_for_wake_word
 
 
 # === GEMINI CLIENT SETUP ===
@@ -27,10 +33,10 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    with open('libra_system_prompt.txt', 'r') as f:
+    with open('speedDemon_system_prompt.txt', 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
-    print("Error: libra_system_prompt.txt not found. Please create the file with the system prompt content.")
+    print("Error: speedDemon_system_prompt.txt not found. Please create the file with the system prompt content.")
     system_prompt = ""
 
 print("System prompt loaded successfully" if system_prompt else "Using fallback system prompt")
@@ -41,11 +47,7 @@ servo_controller = ServoController()
 # === INITIAL STATE ===
 conversation_history = []
 listening = True
-sending_to_gemini = False
-wake_word = "wake"
 exit_words = ["exit", "stop", "quit", "bye", "goodbye"]
-pending_followup = None
-followup_timer = None
 
 # === CAMERA SETUP ===
 cam = cv2.VideoCapture(0)
@@ -97,15 +99,52 @@ def execute_motion_sequence(actions: List[Dict[str, Any]]) -> bool:
             duration = action.get('duration', 1.0)
             time.sleep(duration)
 
-        elif action.get('type') == 'vision_check':
-            # Placeholder for vision processing
-            print(f"Vision check: {action.get('target', 'general')}")
+        # elif action.get('type') == 'vision_check':
+        #     # Placeholder for vision processing
+        #     print(f"Vision check: {action.get('target', 'general')}")
 
         # Brief pause between actions for safety
         time.sleep(0.1)
 
     return True
 
+
+def translate_actions(act_list: List[list]) -> List[Dict[str, Any]]:
+    if not act_list:
+        return []
+
+    command_map = {
+        0: 'move_forward',
+        1: 'move_backward',
+        2: 'move_up',
+        3: 'move_down',
+        4: 'move_left',
+        5: 'move_right',
+        6: 'move_servo',
+        7: 'wait',
+    }
+
+    translated_list = []
+    for action in act_list:
+        if not isinstance(action, list) or len(action) < 1:
+            print(f"Invalid action format: {action}")
+            continue
+
+        cmd_id = action[0]
+        if cmd_id in command_map and cmd_id != 7:
+            translated_list.append({
+                'type': 'motor',
+                'command': command_map[cmd_id],
+                'args': action[1:]
+            })
+        elif cmd_id == 7:
+            translated_list.append({
+                'type': 'wait',
+                'duration': action[1] if len(action) > 1 and isinstance(action[1], (int, float)) else 1.0
+            })
+        else:
+            print(f"Unknown command ID: {cmd_id}")
+    return translated_list
 
 def parse_ai_response(response_text: str) -> Optional[Dict[str, Any]]:
     """Parse AI response and extract structured data"""
@@ -187,19 +226,19 @@ def get_response(user_input: str) -> str:
     if structured_response:
         print("Parsed structured response successfully")
 
-        # Execute motion sequence if present
-        actions = structured_response.get('actions', [])
-        if actions:
-            threading.Thread(target=execute_motion_sequence, args=(actions,)).start()
+        vr = structured_response.get('vr') or structured_response.get('voice_response') or gemini_reply
+        act = structured_response.get('act')
+        if act and isinstance(act, list):
+            translated = translate_actions(act)
+            if translated:
+                threading.Thread(target=execute_motion_sequence, args=(translated,)).start()
 
-        # Schedule followup if needed
-        if structured_response.get('requires_followup') and structured_response.get('followup_prompt'):
-            schedule_followup(structured_response.get('followup_prompt'), 3.0)
+        # fu = structured_response.get('fu')
+        # fp = structured_response.get('fp')
+        # Follow-up handling can be added here if needed using fu/fp
 
-        # Return voice response for TTS
-        voice_response = structured_response.get('voice_response', gemini_reply)
-        conversation_history.append({"role": "model", "parts": [{"text": voice_response}]})
-        return voice_response
+        conversation_history.append({"role": "model", "parts": [{"text": vr}]})
+        return vr
     else:
         # Fallback to original response if parsing fails
         conversation_history.append({"role": "model", "parts": [{"text": gemini_reply}]})
@@ -207,48 +246,36 @@ def get_response(user_input: str) -> str:
 
 
 # === MAIN LOOP ===
-recognizer = sr.Recognizer()
-
-print("Robot control system initialized. Say 'hey' to start interaction.")
+print("Robot control system initialized. Listening for wake word 'Mister Carson'...")
 print("Current robot state:", servo_controller.get_current_state())
 
 while listening:
-    with sr.Microphone() as source:
-        print("Listening...")
-        recognizer.adjust_for_ambient_noise(source)
-        try:
-            audio = recognizer.listen(source, timeout=7.0)
-            response = recognizer.recognize_google(audio)
-            print("Heard:", response)
+    try:
+        # Wait for wake word and get transcription
+        print("\nListening for wake word...")
+        transcript = listen_for_wake_word()
+        
+        if transcript:
+            print(f"Heard: {transcript}")
+            
+            # Check for exit commands
+            if any(word in transcript.lower() for word in exit_words):
+                print("Exit command detected. Shutting down...")
+                listening = False
+                break
+            
+            # Process the command with Gemini
+            reply = get_response(transcript)
+            voice.stream_audio(reply)
+        else:
+            print("No transcript received.")
 
-            if any(word in response.lower() for word in exit_words):
-                sending_to_gemini = False
-                if followup_timer:
-                    followup_timer.cancel()
-                print("Stopped sending responses to Gemini.")
-                continue
-
-            if wake_word in response.lower() and not sending_to_gemini:
-                sending_to_gemini = True
-                print("Wake word detected. Resumed Gemini interaction.")
-                continue
-
-            if sending_to_gemini:
-                # Cancel any pending followup when user speaks
-                if followup_timer:
-                    followup_timer.cancel()
-                    pending_followup = None
-
-                reply = get_response(response)
-                voice.stream_audio(reply)
-
-
-        except sr.UnknownValueError:
-            print("Didn't recognize anything.")
-        except sr.RequestError as e:
-            print(f"Speech Recognition error: {e}")
-        except Exception as e:
-            print(f"Unexpected error: {e}")
+    except KeyboardInterrupt:
+        print("\nInterrupted by user. Shutting down...")
+        listening = False
+        break
+    except Exception as e:
+        print(f"Unexpected error: {e}")
 
 # Cleanup
 cam.release()
