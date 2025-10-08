@@ -1,0 +1,175 @@
+2025-10-05 01:27:54,795 DEBUG HTTP GET https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa data=None params=None
+2025-10-05 01:30:17,114 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title']
+2025-10-05 01:30:17,115 DEBUG HTTP GET https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa data=None params=None
+2025-10-05 01:30:17,447 DEBUG HTTP GET https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa -> 401
+2025-10-05 01:30:17,447 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 01:30:17,762 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa -> 500
+2025-10-05 01:30:17,763 DEBUG Response preview (110 bytes): {"errorId":"1jickutl@erver-14","errorCode":"unknown_exception","errorMessage":"Unknown exception","data":null}
+2025-10-05 01:30:17,763 ERROR TickTick API request failed: 500 Server Error:  for url: https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa
+Traceback (most recent call last):
+  File "/Users/PV/PycharmProjects/meLlamo/ticktick_mcp_server.py", line 116, in _make_request
+    response.raise_for_status()
+  File "/opt/anaconda3/envs/meLlamo/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 500 Server Error:  for url: https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa
+2025-10-05 01:35:33,044 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title']
+2025-10-05 01:35:33,044 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 01:35:33,411 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 401
+2025-10-05 01:35:33,412 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 01:35:33,728 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 01:35:33,728 DEBUG Response preview (421 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e1fab3e1579102b2a7d8aa","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"oranges","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"tags":[],"etag":"buehgq47","kind":"TEXT"}],"columns":[]}
+2025-10-05 01:35:33,730 DEBUG update_task membership in project: True
+2025-10-05 01:35:33,730 DEBUG update_task body: {'id': '68e1fab3e1579102b2a7d8aa', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'lmo'}
+2025-10-05 01:35:33,730 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa data={'id': '68e1fab3e1579102b2a7d8aa', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'lmo'} params=None
+2025-10-05 01:35:34,054 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa -> 200
+2025-10-05 01:35:34,054 DEBUG Response preview (239 bytes): {"id":"68e1fab3e1579102b2a7d8aa","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"lmo","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"rn1jr7tp","kind":"TEXT"}
+2025-10-05 01:46:18,261 DEBUG call_tool delete_task args={'project_id': 68e1faaa1b921102b2a7d897, 'task_id': 68e1fab3e1579102b2a7d8aa}
+2025-10-05 01:46:18,263 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 01:46:18,632 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 401
+2025-10-05 01:46:18,633 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 01:46:18,964 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 01:46:18,965 DEBUG Response preview (407 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e1fab3e1579102b2a7d8aa","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"lmo","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"rn1jr7tp","kind":"TEXT"}],"columns":[]}
+2025-10-05 01:46:18,965 DEBUG delete_task membership in project: True
+2025-10-05 01:46:18,966 DEBUG HTTP DELETE https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa data={'id': '68e1fab3e1579102b2a7d8aa', 'projectId': '68e1faaa1b921102b2a7d897'} params=None
+2025-10-05 01:46:19,273 DEBUG HTTP DELETE https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa -> 500
+2025-10-05 01:46:19,273 DEBUG Response preview (110 bytes): {"errorId":"f8ijhs2r@erver-15","errorCode":"unknown_exception","errorMessage":"Unknown exception","data":null}
+2025-10-05 01:46:19,273 ERROR TickTick API request failed: 500 Server Error:  for url: https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa
+Traceback (most recent call last):
+  File "/Users/PV/PycharmProjects/meLlamo/ticktick_mcp_server.py", line 116, in _make_request
+    response.raise_for_status()
+  File "/opt/anaconda3/envs/meLlamo/lib/python3.11/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 500 Server Error:  for url: https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa
+2025-10-05 16:17:16,989 DEBUG call_tool complete_task args={'project_id': 68e1faaa1b921102b2a7d897, 'task_id': 68e1fab3e1579102b2a7d8aa}
+2025-10-05 16:17:16,990 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 16:17:17,403 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 401
+2025-10-05 16:17:17,404 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 16:17:17,728 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 16:17:17,729 DEBUG Response preview (407 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e1fab3e1579102b2a7d8aa","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"lmo","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"rn1jr7tp","kind":"TEXT"}],"columns":[]}
+2025-10-05 16:17:17,729 DEBUG complete_task membership in project: True
+2025-10-05 16:17:17,730 DEBUG update_task body: {'id': '68e1fab3e1579102b2a7d8aa', 'projectId': '68e1faaa1b921102b2a7d897', 'status': 2}
+2025-10-05 16:17:17,730 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa data={'id': '68e1fab3e1579102b2a7d8aa', 'projectId': '68e1faaa1b921102b2a7d897', 'status': 2} params=None
+2025-10-05 16:17:18,053 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e1fab3e1579102b2a7d8aa -> 200
+2025-10-05 16:17:18,053 DEBUG Response preview (286 bytes): {"id":"68e1fab3e1579102b2a7d8aa","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"lmo","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"completedTime":"2025-10-05T20:17:18.063+0000","status":2,"etag":"c2ltayy1","kind":"TEXT"}
+2025-10-05 17:06:30,924 DEBUG HTTP GET https://api.ticktick.com/open/v1/project data=None params=None
+2025-10-05 17:06:31,278 DEBUG HTTP GET https://api.ticktick.com/open/v1/project -> 401
+2025-10-05 17:06:31,279 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 17:06:31,596 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/project -> 200
+2025-10-05 17:06:31,597 DEBUG Response preview (726 bytes): [{"id":"67613d57fb8f11665a0f81a8","name":"\uD83D\uDC4BWelcome","sortOrder":6917529027641081854,"closed":true,"viewMode":"","kind":"TASK"},{"id":"67613d72fa3d91665a0f824c","name":"\uD83C\uDFE0Personal","sortOrder":0,"viewMode":"list","kind":"TASK"},{"id":"67613d72fa1651665a0f8250","name":"\uD83D\uDCBCWork","sortOrder":1048576,"viewMode":"list","kind":"TASK"},{"id":"67613d72070c51665a0f8254","name":"\uD83D\uDCD6Study","sortOrder":2097152,"viewMode":"kanban","kind":"TASK"},{"id":"67613d720ed3d1665a
+2025-10-05 17:06:31,597 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d57fb8f11665a0f81a8/data data=None params=None
+2025-10-05 17:06:31,922 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d57fb8f11665a0f81a8/data -> 200
+2025-10-05 17:06:31,923 DEBUG Response preview (528 bytes): {"project":{"id":"67613d57fb8f11665a0f81a8","name":"\uD83D\uDC4BWelcome","sortOrder":6917529027641081854,"closed":true,"viewMode":"","kind":"TASK"},"tasks":[],"columns":[{"id":"67613d57cb79094082288045","projectId":"67613d57fb8f11665a0f81a8","name":"Getting Start","sortOrder":-2199023255552},{"id":"67613d57cb79094082288044","projectId":"67613d57fb8f11665a0f81a8","name":"Feature Modules","sortOrder":-1099511627776},{"id":"67613d57cb79094082288043","projectId":"67613d57fb8f11665a0f81a8","name":"Ex
+2025-10-05 17:06:31,923 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d72fa3d91665a0f824c/data data=None params=None
+2025-10-05 17:06:32,249 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d72fa3d91665a0f824c/data -> 200
+2025-10-05 17:06:32,249 DEBUG Response preview (3355 bytes): {"project":{"id":"67613d72fa3d91665a0f824c","name":"\uD83C\uDFE0Personal","sortOrder":0,"viewMode":"list","kind":"TASK"},"tasks":[{"id":"68c0544babda9104fff7c11d","projectId":"67613d72fa3d91665a0f824c","sortOrder":-3848298037249,"title":"Replace Contacts Case","content":"","desc":"","startDate":"2025-12-09T05:00:00.000+0000","dueDate":"2025-12-09T05:00:00.000+0000","timeZone":"America/Indiana/Indianapolis","isAllDay":true,"priority":0,"repeatFlag":"RRULE:FREQ=MONTHLY;INTERVAL=3;BYMONTHDAY=9","st
+2025-10-05 17:06:32,250 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d72fa1651665a0f8250/data data=None params=None
+2025-10-05 17:06:32,569 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d72fa1651665a0f8250/data -> 200
+2025-10-05 17:06:32,570 DEBUG Response preview (1218 bytes): {"project":{"id":"67613d72fa1651665a0f8250","name":"\uD83D\uDCBCWork","sortOrder":1048576,"viewMode":"list","kind":"TASK"},"tasks":[{"id":"6763ad43a50211665a0fa7e2","projectId":"67613d72fa1651665a0f8250","sortOrder":-4194305,"title":"Finish Fantasy Web","content":"","desc":"","startDate":"2026-01-04T05:30:00.000+0000","dueDate":"2026-01-04T05:30:00.000+0000","timeZone":"America/Los_Angeles","isAllDay":false,"priority":3,"reminders":["TRIGGER:PT0S"],"status":0,"items":[{"id":"6763ad908ca211665a0f
+2025-10-05 17:06:32,571 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d72070c51665a0f8254/data data=None params=None
+2025-10-05 17:06:32,932 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d72070c51665a0f8254/data -> 200
+2025-10-05 17:06:32,933 DEBUG Response preview (22809 bytes): {"project":{"id":"67613d72070c51665a0f8254","name":"\uD83D\uDCD6Study","sortOrder":2097152,"viewMode":"kanban","kind":"TASK"},"tasks":[{"id":"68acae8964f791a4fe4dab8e","projectId":"67613d72070c51665a0f8254","sortOrder":-549769445376,"title":"Project Part 3","content":"","desc":"","startDate":"2025-12-12T05:00:00.000+0000","dueDate":"2025-12-12T05:00:00.000+0000","timeZone":"America/Indiana/Indianapolis","isAllDay":true,"priority":0,"status":0,"tags":[],"columnId":"6763b22e7fa111665a0fc1f2","etag
+2025-10-05 17:06:32,934 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d720ed3d1665a0f8258/data data=None params=None
+2025-10-05 17:06:33,245 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/67613d720ed3d1665a0f8258/data -> 200
+2025-10-05 17:06:33,246 DEBUG Response preview (370 bytes): {"project":{"id":"67613d720ed3d1665a0f8258","name":"\uD83D\uDCE6Shopping","sortOrder":3145728,"viewMode":"kanban","kind":"TASK"},"tasks":[],"columns":[{"id":"68a77357a9ba11c9f23389ad","projectId":"67613d720ed3d1665a0f8258","name":"target","sortOrder":1649267441664},{"id":"6763b61191d411665a0fd486","projectId":"67613d720ed3d1665a0f8258","name":"Amazon","sortOrder":0}]}
+2025-10-05 17:06:33,246 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 17:06:33,573 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 17:06:33,574 DEBUG Response preview (168 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[],"columns":[]}
+2025-10-05 20:33:09,391 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'status']
+2025-10-05 20:33:09,392 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:33:09,752 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 401
+2025-10-05 20:33:09,753 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 20:33:10,084 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:33:10,085 DEBUG Response preview (168 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[],"columns":[]}
+2025-10-05 20:33:10,086 DEBUG update_task membership in project: False
+2025-10-05 20:35:50,972 DEBUG call_tool get_tasks args={'project_id': 68e1faaa1b921102b2a7d897, 'include_completed': False}
+2025-10-05 20:35:50,973 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:35:51,320 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:35:51,321 DEBUG Response preview (168 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[],"columns":[]}
+2025-10-05 20:35:53,686 DEBUG call_tool get_tasks args={'project_id': 68e1faaa1b921102b2a7d897, 'include_completed': True}
+2025-10-05 20:35:53,686 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:35:54,009 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:35:54,009 DEBUG Response preview (168 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[],"columns":[]}
+2025-10-05 20:36:00,054 DEBUG call_tool get_tasks args={'project_id': 68e1faaa1b921102b2a7d897, 'include_completed': True}
+2025-10-05 20:36:00,054 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:36:00,435 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:36:00,435 DEBUG Response preview (168 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[],"columns":[]}
+2025-10-05 20:36:39,905 DEBUG call_tool get_tasks args={'project_id': 68e1faaa1b921102b2a7d897, 'include_completed': True}
+2025-10-05 20:36:39,905 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:36:40,233 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:36:40,233 DEBUG Response preview (419 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"Jorge","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"tags":[],"etag":"x5isf03j","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:37:12,958 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'content']
+2025-10-05 20:37:12,958 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:37:13,285 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:37:13,286 DEBUG Response preview (419 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"Jorge","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"tags":[],"etag":"x5isf03j","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:37:13,286 DEBUG update_task membership in project: False
+2025-10-05 20:37:26,443 DEBUG call_tool get_tasks args={'project_id': 68e1faaa1b921102b2a7d897, 'include_completed': False}
+2025-10-05 20:37:26,443 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:37:26,773 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:37:26,773 DEBUG Response preview (419 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"Jorge","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"tags":[],"etag":"x5isf03j","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:55:04,921 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title']
+2025-10-05 20:55:04,922 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:55:05,287 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 401
+2025-10-05 20:55:05,287 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 20:55:05,618 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:55:05,618 DEBUG Response preview (419 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"Jorge","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"tags":[],"etag":"x5isf03j","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:55:05,619 DEBUG update_task membership in project: True
+2025-10-05 20:55:05,619 DEBUG update_task body: {'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'lio'}
+2025-10-05 20:55:05,619 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e data={'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'lio'} params=None
+2025-10-05 20:55:05,957 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e -> 200
+2025-10-05 20:55:05,957 DEBUG Response preview (239 bytes): {"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"lio","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"attr41e3","kind":"TEXT"}
+2025-10-05 20:55:21,989 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title', 'content']
+2025-10-05 20:55:21,989 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:55:22,319 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:55:22,319 DEBUG Response preview (407 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"lio","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"attr41e3","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:55:22,319 DEBUG update_task membership in project: True
+2025-10-05 20:55:22,319 DEBUG update_task body: {'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': '', 'content': 'join'}
+2025-10-05 20:55:22,320 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e data={'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': '', 'content': 'join'} params=None
+2025-10-05 20:55:22,640 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e -> 200
+2025-10-05 20:55:22,641 DEBUG Response preview (240 bytes): {"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"7bu61is0","kind":"TEXT"}
+2025-10-05 20:55:48,104 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title', 'content']
+2025-10-05 20:55:48,105 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:55:48,435 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:55:48,436 DEBUG Response preview (408 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"7bu61is0","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:55:48,437 DEBUG update_task membership in project: True
+2025-10-05 20:55:48,437 DEBUG update_task body: {'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'loin', 'content': 'join'}
+2025-10-05 20:55:48,437 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e data={'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'loin', 'content': 'join'} params=None
+2025-10-05 20:55:48,765 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e -> 200
+2025-10-05 20:55:48,766 DEBUG Response preview (244 bytes): {"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"loin","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"54bp508m","kind":"TEXT"}
+2025-10-05 20:56:06,057 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title', 'content']
+2025-10-05 20:56:06,057 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:56:06,390 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:56:06,391 DEBUG Response preview (412 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"loin","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"54bp508m","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:56:06,391 DEBUG update_task membership in project: True
+2025-10-05 20:56:06,392 DEBUG update_task body: {'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'loin', 'content': ''}
+2025-10-05 20:56:06,392 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e data={'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'loin', 'content': ''} params=None
+2025-10-05 20:56:06,719 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e -> 200
+2025-10-05 20:56:06,720 DEBUG Response preview (240 bytes): {"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"loin","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"il9jocui","kind":"TEXT"}
+2025-10-05 20:57:55,988 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title', 'content']
+2025-10-05 20:57:55,988 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:57:56,314 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:57:56,314 DEBUG Response preview (408 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"loin","content":"","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"il9jocui","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:57:56,315 DEBUG update_task membership in project: True
+2025-10-05 20:57:56,315 DEBUG update_task body: {'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'hella', 'content': 'join'}
+2025-10-05 20:57:56,315 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e data={'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'hella', 'content': 'join'} params=None
+2025-10-05 20:57:56,642 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e -> 200
+2025-10-05 20:57:56,643 DEBUG Response preview (245 bytes): {"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"hella","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"i37xewwi","kind":"TEXT"}
+2025-10-05 20:58:19,820 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title']
+2025-10-05 20:58:19,821 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 20:58:20,174 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 20:58:20,174 DEBUG Response preview (413 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"hella","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"i37xewwi","kind":"TEXT"}],"columns":[]}
+2025-10-05 20:58:20,175 DEBUG update_task membership in project: True
+2025-10-05 20:58:20,175 DEBUG update_task body: {'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'Brunt'}
+2025-10-05 20:58:20,175 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e data={'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'Brunt'} params=None
+2025-10-05 20:58:20,507 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e -> 200
+2025-10-05 20:58:20,507 DEBUG Response preview (245 bytes): {"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"Brunt","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"fsyqjaul","kind":"TEXT"}
+2025-10-05 21:06:52,854 DEBUG call_tool update_task args keys=['project_id', 'task_id', 'title']
+2025-10-05 21:06:52,854 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data data=None params=None
+2025-10-05 21:06:53,214 DEBUG HTTP GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 401
+2025-10-05 21:06:53,215 DEBUG Response preview (614 bytes): {"error":"invalid_token","error_description":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810FE9590C4F1A60C5F965876E7FD3B5175DC6BCB65F9C362074843D3D3056E5F14F482705FC0CFF27C8CA2443966EB30C30A3479F08B34EB","errors":[{"message":"Invalid access token: 020081AA2A97C98F2F90642630D80BEDA9E74A0C8B553F95EF776D7342FA3290D482D1ED631625325E5F98F41BE91FEE06BC65187EC75EF9499A2BC9DA436519E61C643810
+2025-10-05 21:06:53,533 DEBUG HTTP (after refresh) GET https://api.ticktick.com/open/v1/project/68e1faaa1b921102b2a7d897/data -> 200
+2025-10-05 21:06:53,533 DEBUG Response preview (413 bytes): {"project":{"id":"68e1faaa1b921102b2a7d897","name":"test","color":"#6E75F4","sortOrder":-1048576,"closed":false,"groupId":"NONE","kind":"TASK"},"tasks":[{"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"Brunt","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"fsyqjaul","kind":"TEXT"}],"columns":[]}
+2025-10-05 21:06:53,533 DEBUG update_task membership in project: True
+2025-10-05 21:06:53,533 DEBUG update_task body: {'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'oranges'}
+2025-10-05 21:06:53,533 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e data={'id': '68e30f10158e1102b2a7f31e', 'projectId': '68e1faaa1b921102b2a7d897', 'title': 'oranges'} params=None
+2025-10-05 21:06:53,854 DEBUG HTTP POST https://api.ticktick.com/open/v1/task/68e30f10158e1102b2a7f31e -> 200
+2025-10-05 21:06:53,854 DEBUG Response preview (247 bytes): {"id":"68e30f10158e1102b2a7f31e","projectId":"68e1faaa1b921102b2a7d897","sortOrder":-1,"title":"oranges","content":"join","desc":"","timeZone":"America/Indiana/Indianapolis","isAllDay":false,"priority":0,"status":0,"etag":"pneq8nfo","kind":"TEXT"}

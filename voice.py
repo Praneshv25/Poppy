@@ -16,7 +16,8 @@ def stream_audio(text):
         text=text,
         voice_id="LcfcDJNUP1GQjkzn1xUU", # Emily
         model_id="eleven_flash_v2",
-        optimize_streaming_latency=3
+        optimize_streaming_latency=2,
+        voice_settings={"speed": 1.2, "stability": 0.3}
     )
 
     stream(audio_stream)

@@ -1,0 +1,6 @@
+frame.jpg
+.env
+__pycache__/task.cpython-311.pyc
+wakeWord/__pycache__/
+.DS_Store
+.idea

@@ -11,6 +11,8 @@ import os
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 import time
+import logging
+from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
 from ticktickToken import get_access_token
 from task import Task
@@ -23,6 +25,20 @@ from mcp import types
 
 # Load environment variables from .env file
 load_dotenv()
+
+
+# Configure file logging for debug output (does not interfere with MCP stdio)
+LOG_PATH = os.getenv("TICKTICK_MCP_LOG", "/Users/PV/PycharmProjects/meLlamo/orange.log")
+os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
+
+logger = logging.getLogger("ticktick_mcp")
+logger.setLevel(logging.DEBUG)
+if not logger.handlers:
+    handler = RotatingFileHandler(LOG_PATH, maxBytes=1_000_000, backupCount=3, encoding="utf-8")
+    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.propagate = False
 
 
 class TickTickAPI:
@@ -59,6 +75,7 @@ class TickTickAPI:
         }
         
         try:
+            logger.debug(f"HTTP {method} {url} data={data} params={params}")
             response = requests.request(
                 method=method,
                 url=url,
@@ -67,6 +84,12 @@ class TickTickAPI:
                 params=params,
                 timeout=30
             )
+            logger.debug(f"HTTP {method} {url} -> {response.status_code}")
+            try:
+                preview = response.text[:500] if response.text else ""
+                logger.debug(f"Response preview ({len(response.text or '')} bytes): {preview}")
+            except Exception:
+                pass
             
             # If 401, try refreshing token once
             if response.status_code == 401:
@@ -81,12 +104,19 @@ class TickTickAPI:
                         params=params,
                         timeout=30
                     )
+                    logger.debug(f"HTTP (after refresh) {method} {url} -> {response.status_code}")
+                    try:
+                        preview = response.text[:500] if response.text else ""
+                        logger.debug(f"Response preview ({len(response.text or '')} bytes): {preview}")
+                    except Exception:
+                        pass
                 except Exception as refresh_error:
                     raise Exception(f"Token refresh failed: {str(refresh_error)}")
             
             response.raise_for_status()
             return response.json() if response.text else {}
         except requests.exceptions.RequestException as e:
+            logger.exception(f"TickTick API request failed: {e}")
             raise Exception(f"TickTick API request failed: {str(e)}")
     
     def get_tasks(
@@ -184,6 +214,7 @@ class TickTickAPI:
     def update_task(
         self,
         task_id: str,
+        project_id: str,
         title: Optional[str] = None,
         content: Optional[str] = None,
         status: Optional[int] = None,
@@ -204,8 +235,8 @@ class TickTickAPI:
         Returns:
             Updated task dictionary
         """
-        # First get the current task
-        current_task = self.get_task_by_id(task_id)
+        # Build request body without fetching the task (avoid GET task API failures)
+        current_task: Dict[str, Any] = {"id": task_id, "projectId": project_id}
         
         # Update only provided fields
         if title is not None:
@@ -222,11 +253,11 @@ class TickTickAPI:
             else:
                 dt = datetime.fromisoformat(due_date)
             current_task["dueDate"] = dt.strftime("%Y-%m-%dT%H:%M:%S%z")
-        
         endpoint = f"task/{task_id}"
+        logger.debug(f"update_task body: {current_task}")
         return self._make_request("POST", endpoint, data=current_task)
     
-    def complete_task(self, task_id: str) -> Dict[str, Any]:
+    def complete_task(self, task_id: str, project_id: str) -> Dict[str, Any]:
         """
         Mark a task as completed.
         
@@ -236,7 +267,16 @@ class TickTickAPI:
         Returns:
             Updated task dictionary
         """
-        return self.update_task(task_id, status=2)
+        return self.update_task(task_id, project_id, status=2)
+    
+    def delete_task(self, task_id: str, project_id: str) -> Dict[str, Any]:
+        """
+        Delete a task by ID.
+        """
+        endpoint = f"task/{task_id}"
+        # TickTick requires id and projectId in the body
+        body = {"id": task_id, "projectId": project_id}
+        return self._make_request("DELETE", endpoint, data=body)
     
     def get_projects(self) -> List[Dict[str, Any]]:
         """
@@ -416,20 +456,6 @@ async def handle_list_tools() -> list[types.Tool]:
             }
         ),
         types.Tool(
-            name="get_project_data",
-            description="Retrieve project data (project, tasks, columns) for a given projectId",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "project_id": {
-                        "type": "string",
-                        "description": "Project ID to fetch"
-                    }
-                },
-                "required": ["project_id"]
-            }
-        ),
-        types.Tool(
             name="get_all_tasks",
             description="Retrieve tasks across all projects. Optionally include completed and closed projects.",
             inputSchema={
@@ -444,20 +470,6 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": "Whether to include closed projects (default: true)"
                     }
                 }
-            }
-        ),
-        types.Tool(
-            name="get_task_by_id",
-            description="Retrieve a specific task by its ID",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "task_id": {
-                        "type": "string",
-                        "description": "The task ID to retrieve"
-                    }
-                },
-                "required": ["task_id"]
             }
         ),
         types.Tool(
@@ -497,7 +509,7 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": "Whether this is an all-day task (default: false)"
                     }
                 },
-                "required": ["title"]
+                "required": ["title", "project_id"]
             }
         ),
         types.Tool(
@@ -506,6 +518,10 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID that owns the task"
+                    },
                     "task_id": {
                         "type": "string",
                         "description": "Task ID to update"
@@ -533,7 +549,25 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": "New due date in ISO format"
                     }
                 },
-                "required": ["task_id"]
+                "required": ["project_id", "task_id"]
+            }
+        ),
+        types.Tool(
+            name="delete_task",
+            description="Delete a task by its ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID that owns the task"
+                    },
+                    "task_id": {
+                        "type": "string",
+                        "description": "Task ID to delete"
+                    }
+                },
+                "required": ["project_id", "task_id"]
             }
         ),
         types.Tool(
@@ -542,12 +576,16 @@ async def handle_list_tools() -> list[types.Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
+                    "project_id": {
+                        "type": "string",
+                        "description": "Project ID that owns the task"
+                    },
                     "task_id": {
                         "type": "string",
-                        "description": "Task ID to mark as completed"
+                        "description": "Task ID to mark completed"
                     }
                 },
-                "required": ["task_id"]
+                "required": ["project_id", "task_id"]
             }
         ),
         types.Tool(
@@ -583,6 +621,7 @@ async def handle_call_tool(
         if name == "get_tasks":
             project_id = arguments["project_id"]
             include_completed = arguments.get("include_completed", False)
+            logger.debug(f"call_tool get_tasks args={{'project_id': {project_id}, 'include_completed': {include_completed}}}")
             tasks = ticktick_client.get_tasks(
                 project_id=project_id,
                 completed=include_completed
@@ -592,22 +631,6 @@ async def handle_call_tool(
                 text=json.dumps(tasks, indent=2)
             )]
         
-        elif name == "get_task_by_id":
-            task_id = arguments["task_id"]
-            task = ticktick_client.get_task_by_id(task_id)
-            return [types.TextContent(
-                type="text",
-                text=json.dumps(task, indent=2)
-            )]
-        
-        elif name == "get_project_data":
-            project_id = arguments["project_id"]
-            data = ticktick_client.get_project_data(project_id)
-            return [types.TextContent(
-                type="text",
-                text=json.dumps(data, indent=2)
-            )]
-
         elif name == "get_all_tasks":
             include_completed = arguments.get("include_completed", False)
             include_closed = arguments.get("include_closed", True)
@@ -619,12 +642,13 @@ async def handle_call_tool(
                 type="text",
                 text=json.dumps(tasks, indent=2)
             )]
-        
+
         elif name == "create_task":
+            logger.debug(f"call_tool create_task args keys={list(arguments.keys())}")
             task = ticktick_client.create_task(
                 title=arguments["title"],
                 content=arguments.get("content"),
-                project_id=arguments.get("project_id"),
+                project_id=arguments["project_id"],
                 due_date=arguments.get("due_date"),
                 priority=arguments.get("priority", 0),
                 tags=arguments.get("tags"),
@@ -636,8 +660,22 @@ async def handle_call_tool(
             )]
         
         elif name == "update_task":
+            # Validate task belongs to the provided project
+            project_id = arguments["project_id"]
+            task_id = arguments["task_id"]
+            logger.debug(f"call_tool update_task args keys={list(arguments.keys())}")
+            pdata = ticktick_client.get_project_data(project_id)
+            proj_tasks = pdata.get("tasks", []) if isinstance(pdata, dict) else []
+            in_project = any(t.get("id") == task_id for t in proj_tasks)
+            logger.debug(f"update_task membership in project: {in_project}")
+            if not in_project:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Task {task_id} does not belong to project {project_id}."
+                )]
             task = ticktick_client.update_task(
-                task_id=arguments["task_id"],
+                task_id=task_id,
+                project_id=project_id,
                 title=arguments.get("title"),
                 content=arguments.get("content"),
                 status=arguments.get("status"),
@@ -649,8 +687,41 @@ async def handle_call_tool(
                 text=f"✅ Task updated successfully!\n\n{json.dumps(task, indent=2)}"
             )]
         
+        elif name == "delete_task":
+            # Validate task belongs to the provided project
+            project_id = arguments["project_id"]
+            task_id = arguments["task_id"]
+            logger.debug(f"call_tool delete_task args={{'project_id': {project_id}, 'task_id': {task_id}}}")
+            pdata = ticktick_client.get_project_data(project_id)
+            proj_tasks = pdata.get("tasks", []) if isinstance(pdata, dict) else []
+            in_project = any(t.get("id") == task_id for t in proj_tasks)
+            logger.debug(f"delete_task membership in project: {in_project}")
+            if not in_project:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Task {task_id} does not belong to project {project_id}."
+                )]
+            result = ticktick_client.delete_task(task_id, project_id)
+            return [types.TextContent(
+                type="text",
+                text=f"🗑️ Task deleted successfully!\n\n{json.dumps(result, indent=2)}"
+            )]
+        
         elif name == "complete_task":
-            task = ticktick_client.complete_task(arguments["task_id"])
+            # Validate task belongs to the provided project
+            project_id = arguments["project_id"]
+            task_id = arguments["task_id"]
+            logger.debug(f"call_tool complete_task args={{'project_id': {project_id}, 'task_id': {task_id}}}")
+            pdata = ticktick_client.get_project_data(project_id)
+            proj_tasks = pdata.get("tasks", []) if isinstance(pdata, dict) else []
+            in_project = any(t.get("id") == task_id for t in proj_tasks)
+            logger.debug(f"complete_task membership in project: {in_project}")
+            if not in_project:
+                return [types.TextContent(
+                    type="text",
+                    text=f"❌ Task {task_id} does not belong to project {project_id}."
+                )]
+            task = ticktick_client.complete_task(task_id, project_id)
             return [types.TextContent(
                 type="text",
                 text=f"✅ Task marked as completed!\n\n{json.dumps(task, indent=2)}"
