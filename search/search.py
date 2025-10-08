@@ -13,7 +13,7 @@ client = genai.Client(api_key=os.getenv("API_KEY"))
 
 
 try:
-    with open('search_sys_prompt.txt', 'r') as f:
+    with open('search/search_sys_prompt.txt', 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: search_sys_prompt.txt not found. Please create the file with the system prompt content.")
@@ -28,8 +28,6 @@ generation_config = GenerateContentConfig(
     max_output_tokens=8192,
     system_instruction=system_prompt,
 )
-
-
 
 
 def validate_search_need(query):
@@ -53,6 +51,3 @@ def search(query):
     )
 
     return completion.choices[0].message.content
-
-# print(validate_search_need("When is the next Chargers game?"))
-
