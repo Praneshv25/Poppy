@@ -4,6 +4,7 @@ from google.genai.types import GenerateContentConfig
 
 from dotenv import load_dotenv
 import os
+import time
 
 load_dotenv()
 client_perplexity = Perplexity()
@@ -45,9 +46,15 @@ def validate_search_need(query):
 def search(query):
     completion = client_perplexity.chat.completions.create(
         model="sonar",
+        max_tokens=100,
         messages=[
             {"role": "user", "content": query}
         ]
     )
 
     return completion.choices[0].message.content
+
+# print("start")
+# start_time = time.time()
+# print(validate_search_need("When is the next Chargers game?"))
+# print(time.time() - start_time)
