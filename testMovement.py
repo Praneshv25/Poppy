@@ -1,14 +1,14 @@
 from ServoController import ServoController
 
 sc = ServoController()
-# sc.move_up(10)
-# sc.move_backward(60)
-# sc.move_backward(30)
-# sc.move_forward(1)
-# sc.move_forward(30)
-# sc.move_forward(99)
-# sc.move_forward(30)
-# sc.move_up(20)
 
-sc.move_right(90)
-# sc.move_left(90)
+# Test absolute servo positioning
+# sc.set_elevation(1)      # Move to middle elevation
+# sc.set_translation(70)    # Move forward
+# sc.set_translation(1)    # Move backward
+# sc.set_elevation(80)      # Move up
+# sc.set_elevation(10)      # Move down
+
+# Test relative stepper rotation
+sc.move_right(10)
+# sc.move_left(10)

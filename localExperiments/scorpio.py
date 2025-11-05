@@ -13,7 +13,8 @@ import ollama
 import openai
 import base64
 from llama_cpp import Llama
-
+from dotenv import load_dotenv
+import os
 # === IMPORT SERVO CONTROLLER ===
 from ServoController import ServoController
 
@@ -30,8 +31,10 @@ llm = Llama.from_pretrained(
 	filename="SmolVLM-500M-Instruct-Q8_0.gguf",
 )
 
+load_dotenv()
+
 # === GEMINI CLIENT SETUP ===
-client = genai.Client(api_key="AIzaSyDosNbIypDa8kk3LLIWrVNGPwYkzj9V0UE")  # <-- Replace with your Gemini API key
+client = genai.Client(api_key=os.getenv("API_KEY"))  # <-- Replace with your Gemini API key
 
 generation_config = GenerateContentConfig(
     temperature=0.8,

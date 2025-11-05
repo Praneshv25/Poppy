@@ -200,3 +200,6 @@ tqdm==4.67.1
 transformers==4.54.1
 typing_extensions==4.14.1
 urllib3==2.5.0
+google-genai>=0.2.0
+perplexity>=0.1.0
+pydantic>=2.0.0

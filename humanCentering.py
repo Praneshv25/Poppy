@@ -1,20 +1,24 @@
 import mediapipe as mp
 import cv2
 import numpy as np
+import time
 
-import ServoController as sc
+from ServoController import ServoController
+
+sc = ServoController()
 
 # Initialize MediaPipe Face Detection (BlazeFace)
 mp_face_detection = mp.solutions.face_detection
 mp_drawing = mp.solutions.drawing_utils
 
-# Initialize face detection
-face_detection = mp_face_detection.FaceDetection(
-    model_selection=0,  # 0 for short-range (2m), 1 for full-range (5m)
-    min_detection_confidence=0.9
-)
+def get_face_detection():
+    """Get a fresh face detection instance"""
+    return mp_face_detection.FaceDetection(
+        model_selection=0,  # 0 for short-range (2m), 1 for full-range (5m)
+        min_detection_confidence=0.9
+    )
 
-def detect_faces(image):
+def detect_faces(image, face_detection_instance):
     """
     Detect faces in an image using BlazeFace
     Returns: List of face detection results
@@ -23,7 +27,7 @@ def detect_faces(image):
     rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     
     # Process the image
-    results = face_detection.process(rgb_image)
+    results = face_detection_instance.process(rgb_image)
     
     return results.detections if results.detections else []
 
@@ -68,7 +72,7 @@ def get_face_center(detection, image_shape):
 
 def calculate_face_angle(face_center, image_shape, fov_degrees=60):
     """
-    Calculate the angle of the face relative to the center of the frame
+    Calculate the horizontal angle of the face relative to the center of the frame
     Args:
         face_center: (x, y) coordinates of face center
         image_shape: (height, width, channels) of the image
@@ -91,20 +95,48 @@ def calculate_face_angle(face_center, image_shape, fov_degrees=60):
     
     return angle_degrees
 
-def get_face_angle_from_frame(frame):
+def calculate_face_vertical_offset(face_center, image_shape, fov_degrees=60):
+    """
+    Calculate the vertical offset of the face relative to the center of the frame
+    Args:
+        face_center: (x, y) coordinates of face center
+        image_shape: (height, width, channels) of the image
+        fov_degrees: Field of view in degrees (default 60 for typical webcam)
+    Returns:
+        Vertical offset in degrees (negative = above center, positive = below center)
+    """
+    face_x, face_y = face_center
+    h, w = image_shape[:2]
+    
+    # Calculate frame center
+    frame_center_y = h // 2
+    
+    # Calculate offset from center (pixels)
+    offset_y = face_y - frame_center_y
+    
+    # Calculate angle using field of view
+    # Using vertical FOV (assuming similar to horizontal)
+    angle_degrees = (offset_y / h) * fov_degrees
+    
+    return angle_degrees
+
+def get_face_angle_from_frame(frame, face_detection_instance):
     """
     Get the angle of the first detected face in a frame
     Returns: Angle in degrees (negative = left, positive = right), or None if no face detected
     """
-    detections = detect_faces(frame)
+    detections = detect_faces(frame, face_detection_instance)
     if detections:
         center = get_face_center(detections[0], frame.shape)
         return calculate_face_angle(center, frame.shape)
     return None
 
-def run_face_detection():
+def run_face_detection(max_iterations=50, center_threshold=5):
     """
-    Run real-time face detection using webcam
+    Run real-time face detection and center on face
+    Args:
+        max_iterations: Maximum number of iterations before giving up
+        center_threshold: Angular threshold in degrees to consider face "centered"
     """
     # Initialize webcam
     cap = cv2.VideoCapture(0)
@@ -114,75 +146,152 @@ def run_face_detection():
         return
     
     print("BlazeFace Face Detection Started!")
-    print("Press 'q' to quit")
     
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Error: Could not read frame")
-            break
-        
-        # Flip frame horizontally for mirror effect
-        # frame = cv2.flip(frame, 1) 
-        
-        # Detect faces
-        detections = detect_faces(frame)
-        
-        # Draw detections
-        frame = draw_face_detections(frame, detections)
-        
-        # Draw center line
-        h, w = frame.shape[:2]
-        center_x = w // 2
-        cv2.line(frame, (center_x, 0), (center_x, h), (255, 0, 0), 2)  # Blue center line
-        
-        # Print face information and calculate angles
-        if detections:
-            print(f"Detected {len(detections)} face(s)")
-            for i, detection in enumerate(detections):
-                center = get_face_center(detection, frame.shape)
-                confidence = detection.score[0]
-                angle = calculate_face_angle(center, frame.shape)
-                
-                # Determine direction
-                if angle < 0:
-                    direction = f"{abs(angle):.1f}° left"
-                elif angle > 0:
-                    direction = f"{angle:.1f}° right"
-                else:
-                    direction = "center"
-                
-                print(f"Face {i+1}: Center={center}, Confidence={confidence:.3f}, Angle: {direction}")
-                
-                # Draw angle text on frame
-                cv2.putText(frame, f"Angle: {direction}", 
-                           (center[0] - 50, center[1] + 30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
-        else:
-            print("No faces detected")
-        
-        # Display frame
-        cv2.imshow('BlazeFace Face Detection', frame)
-        
-        # Break on 'q' key press
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            break
+    # Create a fresh face detection instance
+    face_detection = get_face_detection()
     
-    # Cleanup
-    cap.release()
-    cv2.destroyAllWindows()
-    face_detection.close()
+    iterations = 0
+    consecutive_centered = 0
+    required_consecutive = 3  # Need face centered for 3 consecutive frames
+    
+    try:
+        while iterations < max_iterations:
+            ret, frame = cap.read()
+            if not ret:
+                print("Error: Could not read frame")
+                break
+            
+            # Detect faces
+            detections = detect_faces(frame, face_detection)
+            
+            # Draw detections
+            frame = draw_face_detections(frame, detections)
+            
+            # Draw center line
+            h, w = frame.shape[:2]
+            center_x = w // 2
+            cv2.line(frame, (center_x, 0), (center_x, h), (255, 0, 0), 2)  # Blue center line
+            
+            # Print face information and calculate angles
+            if detections:
+                print(f"Detected {len(detections)} face(s)")
+                for i, detection in enumerate(detections):
+                    center = get_face_center(detection, frame.shape)
+                    confidence = detection.score[0]
+                    horizontal_angle = calculate_face_angle(center, frame.shape)
+                    vertical_angle = calculate_face_vertical_offset(center, frame.shape)
+                    
+                    # Determine horizontal direction
+                    if horizontal_angle < 0:
+                        h_direction = f"{abs(horizontal_angle):.1f}° left"
+                    elif horizontal_angle > 0:
+                        h_direction = f"{horizontal_angle:.1f}° right"
+                    else:
+                        h_direction = "center"
+                    
+                    # Determine vertical direction
+                    if vertical_angle < 0:
+                        v_direction = f"{abs(vertical_angle):.1f}° up"
+                    elif vertical_angle > 0:
+                        v_direction = f"{vertical_angle:.1f}° down"
+                    else:
+                        v_direction = "center"
+                    
+                    print(f"Face {i+1}: Center={center}, Confidence={confidence:.3f}, H: {h_direction}, V: {v_direction}")
+                    
+                    # Draw angle text on frame
+                    cv2.putText(frame, f"H: {h_direction}, V: {v_direction}", 
+                               (center[0] - 80, center[1] + 30), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+                    
+                    # Check if face is centered (both horizontal and vertical)
+                    h_centered = abs(horizontal_angle) <= center_threshold
+                    v_centered = abs(vertical_angle) <= center_threshold
+                    
+                    if h_centered and v_centered:
+                        consecutive_centered += 1
+                        print("Face is centered")
+                        if consecutive_centered >= required_consecutive:
+                            print("Face centered successfully!")
+                            break
+                    else:
+                        consecutive_centered = 0
+                        moved = center_face(horizontal_angle, vertical_angle)
+                        # If we couldn't move (hit limits), give up after a few tries
+                        if not moved:
+                            print("⚠️ Cannot center - hit movement limits. Proceeding anyway.")
+                            break
+                        else:
+                            # Wait for motors to complete movement before next check
+                            time.sleep(1.5)
+            else:
+                print("No faces detected")
+                consecutive_centered = 0
+            
+            # Display frame
+            # cv2.imshow('BlazeFace Face Detection', frame)
+            
+            # Check for 'q' key press
+            if cv2.waitKey(1) & 0xFF == ord('q'):
+                break
+            
+            iterations += 1
+    finally:
+        # Cleanup
+        cap.release()
+        cv2.destroyAllWindows()
+        face_detection.close()
+        print("Face detection completed")
 
 
-def center_face(angle):
-    threshold = 10
-    if angle < 0 and abs(angle) > threshold:
-        sc.move_stepper("left", abs(angle))
-    elif angle > 0 and abs(angle) > threshold:
-        sc.move_stepper("right", abs(angle))
-    else:
-        print("Face is centered")
+def center_face(horizontal_angle, vertical_angle):
+    """
+    Center the face by moving the robot horizontally and vertically
+    Args:
+        horizontal_angle: Angle in degrees (negative = left, positive = right)
+        vertical_angle: Angle in degrees (negative = above center, positive = below center)
+    Returns:
+        bool: True if any movement was made, False if hit limits
+    """
+    threshold = 2
+    moved = False
+    
+    # Horizontal movement (left/right) - uses degrees directly, max 20 degrees
+    # Stepper motor - RELATIVE movement (unchanged)
+    horizontal_move_degrees = min(abs(horizontal_angle), 20)  # Clamp to max 20 degrees
+    
+    if horizontal_angle < 0 and abs(horizontal_angle) > threshold:
+        success = sc.move_left(horizontal_move_degrees)
+        print(f"Moving left by {abs(horizontal_angle):.1f}° (clamped to {horizontal_move_degrees:.1f}°)")
+        moved = moved or success
+    elif horizontal_angle > 0 and abs(horizontal_angle) > threshold:
+        success = sc.move_right(horizontal_move_degrees)
+        print(f"Moving right by {abs(horizontal_angle):.1f}° (clamped to {horizontal_move_degrees:.1f}°)")
+        moved = moved or success
+    
+    # Vertical movement (up/down) - ABSOLUTE servo positioning
+    # Convert angle to servo position change (1 degree = 1 servo unit, max 20 servo units)
+    vertical_servo_delta = min(abs(vertical_angle), 5)  # Clamp to max 20 servo units
+    
+    if abs(vertical_angle) > threshold:
+        # Get current elevation position
+        current_elevation = sc.elevation_servo_pos
+        
+        if vertical_angle < 0:
+            # Face is above center, move elevation up (higher value)
+            target_elevation = min(current_elevation + vertical_servo_delta, 100)
+            success = sc.set_elevation(target_elevation)
+            print(f"Moving up: {current_elevation} → {target_elevation}")
+            moved = moved or success
+        elif vertical_angle > 0:
+            # Face is below center, move elevation down (lower value)
+            target_elevation = max(current_elevation - vertical_servo_delta, 0)
+            success = sc.set_elevation(target_elevation)
+            print(f"Moving down: {current_elevation} → {target_elevation}")
+            moved = moved or success
+    
+    return moved
 
 
-if __name__ == "__main__":
-    run_face_detection()
+# if __name__ == "__main__":
+#     run_face_detection()

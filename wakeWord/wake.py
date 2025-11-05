@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from deepgram import AsyncDeepgramClient
 from deepgram.core.events import EventType
 from deepgram.extensions.types.sockets import ListenV2SocketClientResponse
+import humanCentering
 
 load_dotenv()
 
@@ -46,9 +47,12 @@ def listen_for_wake_word():
             print(time.time() - start, scores)
             for name, score in scores.items():
                 if score >= THRESHOLD and (now - last_triggered_ts) >= COOLDOWN_SEC:
+                    humanCentering.run_face_detection(max_iterations=50)
                     print(f"[wake] {name}: {score:.2f}")
+                    print("Waiting for motors to settle before recording...")
+                    time.sleep(0.125)  # Wait for motors to settle and noise to dissipate
                     last_triggered_ts = now
-                    # return asyncio.run(transcribe_audio())
+                    return asyncio.run(transcribe_audio())
     except KeyboardInterrupt:
         raise
 

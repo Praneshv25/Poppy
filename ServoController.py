@@ -5,6 +5,11 @@ from typing import Dict
 MIN_STEPPER_DEG = -180
 MAX_STEPPER_DEG = 180
 
+MICROSTEP = 8  # set this to 1,2,4,8,16 depending on MS1/MS2/MS3 on A4988
+FULL_STEPS_PER_REV = 200  # typical NEMA17
+STEPS_PER_REV = FULL_STEPS_PER_REV * MICROSTEP
+STEPS_PER_DEG = STEPS_PER_REV / 360.0
+
 class ServoController:
     def __init__(self, port='/dev/tty.usbmodem1101', baud=9600, delay=2):
         self.port = port
@@ -16,7 +21,7 @@ class ServoController:
         self.elevation_servo_pos = 0
         self.rotation_stepper_deg = 0
         self.translation_servo_pos = 0
-        self.max_servo_change = 80  # Hardware safety limit
+        self.max_servo_change = 20  # Hardware safety limit
         self._connect()
 
     def _connect(self):
@@ -55,55 +60,39 @@ class ServoController:
         print(f"[?] Sent servo: {command.strip()}")
         return True
 
-    def move_up(self, value):
-        """Move elevation servo up by value with safety limits"""
-        safe_value = self._safe_servo_move(self.elevation_servo_pos, abs(value))
-        new_pos = self._clamp_servo(self.elevation_servo_pos + safe_value)
-
-        if new_pos != self.elevation_servo_pos:
-            shifted = self.move_servo(self.elevation_motor_port, new_pos)
+    def set_elevation(self, value):
+        """Set absolute elevation position (0-100) with safety limits"""
+        target_pos = self._clamp_servo(value)
+        
+        # Check if movement exceeds safety limits
+        delta = abs(target_pos - self.elevation_servo_pos)
+        if delta > self.max_servo_change:
+            print(f"Warning: Movement of {delta} exceeds safety limit of {self.max_servo_change}")
+            return False
+        
+        if target_pos != self.elevation_servo_pos:
+            shifted = self.move_servo(self.elevation_motor_port, target_pos)
             if shifted:
-                self.elevation_servo_pos = new_pos
-                print(f"Moved up to elevation: {self.elevation_servo_pos}")
+                self.elevation_servo_pos = target_pos
+                print(f"Set elevation to: {self.elevation_servo_pos}")
                 return True
         return False
 
-    def move_down(self, value):
-        """Move elevation servo down by value with safety limits"""
-        safe_value = self._safe_servo_move(self.elevation_servo_pos, -abs(value))
-        new_pos = self._clamp_servo(self.elevation_servo_pos + safe_value)
-
-        if new_pos != self.elevation_servo_pos:
-            shifted = self.move_servo(self.elevation_motor_port, new_pos)
+    def set_translation(self, value):
+        """Set absolute translation position (0-100) with safety limits"""
+        target_pos = self._clamp_servo(value)
+        
+        # Check if movement exceeds safety limits
+        delta = abs(target_pos - self.translation_servo_pos)
+        if delta > self.max_servo_change:
+            print(f"Warning: Movement of {delta} exceeds safety limit of {self.max_servo_change}")
+            return False
+        
+        if target_pos != self.translation_servo_pos:
+            shifted = self.move_servo(self.translation_motor_port, target_pos)
             if shifted:
-                self.elevation_servo_pos = new_pos
-                print(f"Moved down to elevation: {self.elevation_servo_pos}")
-                return True
-        return False
-
-    def move_forward(self, value):
-        """Move translation servo forward by value with safety limits"""
-        safe_value = self._safe_servo_move(self.translation_servo_pos, abs(value))
-        new_pos = self._clamp_servo(self.translation_servo_pos + safe_value)
-
-        if new_pos != self.translation_servo_pos:
-            shifted = self.move_servo(self.translation_motor_port, new_pos)
-            if shifted:
-                self.translation_servo_pos = new_pos
-                print(f"Moved forward to translation: {self.translation_servo_pos}")
-                return True
-        return False
-
-    def move_backward(self, value):
-        """Move translation servo backward by value with safety limits"""
-        safe_value = self._safe_servo_move(self.translation_servo_pos, -abs(value))
-        new_pos = self._clamp_servo(self.translation_servo_pos + safe_value)
-
-        if new_pos != self.translation_servo_pos:
-            shifted = self.move_servo(self.translation_motor_port, new_pos)
-            if shifted:
-                self.translation_servo_pos = new_pos
-                print(f"Moved backward to translation: {self.translation_servo_pos}")
+                self.translation_servo_pos = target_pos
+                print(f"Set translation to: {self.translation_servo_pos}")
                 return True
         return False
 
@@ -141,7 +130,10 @@ class ServoController:
             return False
 
         if degrees is not None:
-            steps = degrees * 1000 // 360
+            steps = int(round(abs(degrees) * STEPS_PER_DEG))
+            # sanity clamp to avoid sending 0 when degrees small
+            if steps == 0 and abs(degrees) > 0.01:
+                steps = 1
             new_step_deg = self.rotation_stepper_deg - degrees if direction == 'left' else self.rotation_stepper_deg + degrees
             if new_step_deg < MIN_STEPPER_DEG or new_step_deg > MAX_STEPPER_DEG:
                 return False

@@ -10,6 +10,15 @@ import threading
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
+import search.search as search
+from pydantic import BaseModel
+
+# Define the structured response model
+class RobotResponse(BaseModel):
+    vr: str  # voice response
+    act: List[List[Any]]  # actions list, e.g., [[4,12],[0,20],[7,1.0]]
+    fu: bool  # follow-up needed
+    fp: str  # follow-up prompt
 
 # Load environment variables from .env file
 load_dotenv()
@@ -43,6 +52,8 @@ print("System prompt loaded successfully" if system_prompt else "Using fallback 
 
 # === ROBOT CONTROLLER INITIALIZATION ===
 servo_controller = ServoController()
+servo_controller.set_elevation(1)  # Start at middle elevation
+servo_controller.set_translation(1)  # Start at middle translation
 
 # === INITIAL STATE ===
 conversation_history = []
@@ -76,14 +87,10 @@ def execute_motion_sequence(actions: List[Dict[str, Any]]) -> bool:
             args = action.get('args', [])
 
             # Map commands to servo controller methods
-            if command == 'move_up' and args:
-                servo_controller.move_up(args[0])
-            elif command == 'move_down' and args:
-                servo_controller.move_down(args[0])
-            elif command == 'move_forward' and args:
-                servo_controller.move_forward(args[0])
-            elif command == 'move_backward' and args:
-                servo_controller.move_backward(args[0])
+            if command == 'set_elevation' and args:
+                servo_controller.set_elevation(args[0])
+            elif command == 'set_translation' and args:
+                servo_controller.set_translation(args[0])
             elif command == 'move_left' and args:
                 servo_controller.move_left(args[0])
             elif command == 'move_right' and args:
@@ -114,14 +121,12 @@ def translate_actions(act_list: List[list]) -> List[Dict[str, Any]]:
         return []
 
     command_map = {
-        0: 'move_forward',
-        1: 'move_backward',
-        2: 'move_up',
-        3: 'move_down',
-        4: 'move_left',
-        5: 'move_right',
-        6: 'move_servo',
-        7: 'wait',
+        0: 'set_translation',  # absolute translation position (0-100)
+        1: 'set_elevation',    # absolute elevation position (0-100)
+        2: 'move_left',        # relative rotation (stepper, degrees)
+        3: 'move_right',       # relative rotation (stepper, degrees)
+        4: 'move_servo',       # direct servo control (channel, value)
+        5: 'wait',             # hold position/wait
     }
 
     translated_list = []
@@ -131,13 +136,13 @@ def translate_actions(act_list: List[list]) -> List[Dict[str, Any]]:
             continue
 
         cmd_id = action[0]
-        if cmd_id in command_map and cmd_id != 7:
+        if cmd_id in command_map and cmd_id != 5:
             translated_list.append({
                 'type': 'motor',
                 'command': command_map[cmd_id],
                 'args': action[1:]
             })
-        elif cmd_id == 7:
+        elif cmd_id == 5:
             translated_list.append({
                 'type': 'wait',
                 'duration': action[1] if len(action) > 1 and isinstance(action[1], (int, float)) else 1.0
@@ -146,43 +151,8 @@ def translate_actions(act_list: List[list]) -> List[Dict[str, Any]]:
             print(f"Unknown command ID: {cmd_id}")
     return translated_list
 
-def parse_ai_response(response_text: str) -> Optional[Dict[str, Any]]:
-    """Parse AI response and extract structured data"""
-    try:
-        # Look for JSON structure in the response
-        start_idx = response_text.find('{')
-        if start_idx == -1:
-            return None
-
-        # Find the matching closing brace
-        brace_count = 0
-        end_idx = -1
-        for i in range(start_idx, len(response_text)):
-            if response_text[i] == '{':
-                brace_count += 1
-            elif response_text[i] == '}':
-                brace_count -= 1
-                if brace_count == 0:
-                    end_idx = i
-                    break
-
-        if end_idx == -1:
-            return None
-
-        json_str = response_text[start_idx:end_idx + 1]
-        return json.loads(json_str)
-
-    except json.JSONDecodeError as e:
-        print(f"JSON parse error: {e}")
-        return None
-    except Exception as e:
-        print(f"Response parsing error: {e}")
-        return None
-
-
-
 # === ENHANCED GEMINI REQUEST FUNCTION ===
-def get_response(user_input: str) -> str:
+def get_response(user_input: str, search_context: Optional[str] = None) -> str:
     global conversation_history
 
     frame_data = get_frame_data()
@@ -196,12 +166,19 @@ def get_response(user_input: str) -> str:
     vision_parts = [
         {"text": f"User command: {user_input}"},
         {"text": state_info},
+    ]
+    
+    # Add search context if provided
+    if search_context:
+        vision_parts.append({"text": f"Search context: {search_context}"})
+    
+    vision_parts.extend([
         {"text": "Here is the current visual scene."},
         {"inline_data": {
             "mime_type": "image/jpeg",
             "data": frame_data
         }}
-    ]
+    ])
 
     conversation_history.append({"role": "user", "parts": vision_parts})
 
@@ -214,35 +191,29 @@ def get_response(user_input: str) -> str:
             top_p=0.9,
             top_k=40,
             max_output_tokens=8192,
+            response_mime_type="application/json",
+            response_schema=RobotResponse,
         )
     )
 
-    gemini_reply = response.text
-    print("Gemini:", gemini_reply)
+    # Use structured output directly - no parsing needed!
+    robot_response: RobotResponse = response.parsed
+    
+    print("Gemini:", robot_response.vr)
+    print("Actions:", robot_response.act)
 
-    # Parse structured response
-    structured_response = parse_ai_response(gemini_reply)
+    # Execute actions if present
+    if robot_response.act and isinstance(robot_response.act, list):
+        translated = translate_actions(robot_response.act)
+        if translated:
+            threading.Thread(target=execute_motion_sequence, args=(translated,)).start()
 
-    if structured_response:
-        print("Parsed structured response successfully")
+    # fu = robot_response.fu
+    # fp = robot_response.fp
+    # Follow-up handling can be added here if needed using fu/fp
 
-        vr = structured_response.get('vr') or structured_response.get('voice_response') or gemini_reply
-        act = structured_response.get('act')
-        if act and isinstance(act, list):
-            translated = translate_actions(act)
-            if translated:
-                threading.Thread(target=execute_motion_sequence, args=(translated,)).start()
-
-        # fu = structured_response.get('fu')
-        # fp = structured_response.get('fp')
-        # Follow-up handling can be added here if needed using fu/fp
-
-        conversation_history.append({"role": "model", "parts": [{"text": vr}]})
-        return vr
-    else:
-        # Fallback to original response if parsing fails
-        conversation_history.append({"role": "model", "parts": [{"text": gemini_reply}]})
-        return gemini_reply
+    conversation_history.append({"role": "model", "parts": [{"text": robot_response.vr}]})
+    return robot_response.vr
 
 
 # === MAIN LOOP ===
@@ -264,8 +235,22 @@ while listening:
                 listening = False
                 break
             
-            # Process the command with Gemini
-            reply = get_response(transcript)
+
+            # Check if search is needed
+            # Get recent conversation context (pass list, not JSON string)
+            recent_context = None
+            if len(conversation_history) > 0:
+                # Pass last 4 items (2 question-answer pairs) as a list
+                recent_context = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
+
+            need_search, search_result = search.validate_search_need(transcript, conversation_context=recent_context)
+            
+            # If search is needed, include search context in the request
+            if need_search:
+                reply = get_response(transcript, search_context=search_result)
+            else:
+                # Proceed as normal without search context
+                reply = get_response(transcript)
             voice.stream_audio(reply)
         else:
             print("No transcript received.")
