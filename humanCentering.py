@@ -131,6 +131,54 @@ def get_face_angle_from_frame(frame, face_detection_instance):
         return calculate_face_angle(center, frame.shape)
     return None
 
+def look_around():
+    """
+    Make the robot look around to search for faces
+    Performs a sweep pattern: left -> right -> up -> down -> center
+    """
+    print("👀 Looking around for faces...")
+    
+    # Save current position
+    initial_rotation = sc.rotation_stepper_deg
+    initial_elevation = sc.elevation_servo_pos
+    
+    # Look left
+    print("Looking left...")
+    sc.move_left(30)
+    time.sleep(0.5)
+    
+    # Look right (from left)
+    print("Looking right...")
+    sc.move_right(60)  # 60 degrees to go past center to the right
+    time.sleep(0.5)
+    
+    # Return to center horizontally
+    print("Returning to center...")
+    sc.move_left(30)
+    time.sleep(0.5)
+    
+    # Look up
+    if sc.elevation_servo_pos < 90:
+        print("Looking up...")
+        target_up = min(sc.elevation_servo_pos + 15, 90)
+        sc.set_elevation(target_up)
+        time.sleep(0.5)
+    
+    # Look down
+    if sc.elevation_servo_pos > 10:
+        print("Looking down...")
+        target_down = max(sc.elevation_servo_pos - 20, 10)
+        sc.set_elevation(target_down)
+        time.sleep(0.5)
+    
+    # Return to initial position
+    print("Returning to initial position...")
+    sc.set_elevation(initial_elevation)
+    time.sleep(0.3)
+    
+    print("Look around complete!")
+
+
 def run_face_detection(max_iterations=50, center_threshold=5):
     """
     Run real-time face detection and center on face
@@ -152,10 +200,13 @@ def run_face_detection(max_iterations=50, center_threshold=5):
     
     iterations = 0
     consecutive_centered = 0
+    consecutive_no_face = 0
     required_consecutive = 3  # Need face centered for 3 consecutive frames
+    no_face_threshold = 5  # Number of consecutive frames with no face before looking around
+    face_centered_successfully = False
     
     try:
-        while iterations < max_iterations:
+        while iterations < max_iterations and not face_centered_successfully:
             ret, frame = cap.read()
             if not ret:
                 print("Error: Could not read frame")
@@ -174,6 +225,7 @@ def run_face_detection(max_iterations=50, center_threshold=5):
             
             # Print face information and calculate angles
             if detections:
+                consecutive_no_face = 0  # Reset no-face counter
                 print(f"Detected {len(detections)} face(s)")
                 for i, detection in enumerate(detections):
                     center = get_face_center(detection, frame.shape)
@@ -212,7 +264,8 @@ def run_face_detection(max_iterations=50, center_threshold=5):
                         consecutive_centered += 1
                         print("Face is centered")
                         if consecutive_centered >= required_consecutive:
-                            print("Face centered successfully!")
+                            print("✅ Face centered successfully! Exiting centering protocol.")
+                            face_centered_successfully = True
                             break
                     else:
                         consecutive_centered = 0
@@ -227,6 +280,15 @@ def run_face_detection(max_iterations=50, center_threshold=5):
             else:
                 print("No faces detected")
                 consecutive_centered = 0
+                consecutive_no_face += 1
+                
+                # If no face detected for several consecutive frames, look around
+                if consecutive_no_face >= no_face_threshold:
+                    print(f"No face detected for {consecutive_no_face} frames. Looking around...")
+                    look_around()
+                    consecutive_no_face = 0  # Reset counter after looking around
+                    # Continue searching after looking around
+                    time.sleep(0.5)
             
             # Display frame
             # cv2.imshow('BlazeFace Face Detection', frame)

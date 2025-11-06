@@ -29,6 +29,14 @@ from ServoController import ServoController
 # === IMPORT WAKE WORD & TRANSCRIPTION ===
 from wakeWord.wake import listen_for_wake_word
 
+# === IMPORT SCHEDULER ===
+from tasks.scheduler_v2 import ActionScheduler
+from tasks.command_parser import parse_scheduling_request
+from tasks.scheduled_actions_v2 import create_scheduled_action
+
+# === IMPORT ROBOT ACTIONS ===
+from robot_actions import translate_actions, execute_motion_sequence
+
 
 # === GEMINI CLIENT SETUP ===
 client = genai.Client(api_key=os.getenv("API_KEY"))
@@ -55,6 +63,10 @@ servo_controller = ServoController()
 servo_controller.set_elevation(1)  # Start at middle elevation
 servo_controller.set_translation(1)  # Start at middle translation
 
+# === SCHEDULER INITIALIZATION ===
+scheduler = ActionScheduler(servo_controller, check_interval=10)
+scheduler.start()
+
 # === INITIAL STATE ===
 conversation_history = []
 listening = True
@@ -74,82 +86,7 @@ def get_frame_data():
     return base64.b64encode(buffer).decode('utf-8')
 
 
-# === MOTION EXECUTION SYSTEM ===
-def execute_motion_sequence(actions: List[Dict[str, Any]]) -> bool:
-    """Execute a sequence of robot actions"""
-    print(f"Executing {len(actions)} actions...")
-
-    for i, action in enumerate(actions):
-        print(f"Action {i + 1}: {action.get('type', 'unknown')}")
-
-        if action.get('type') == 'motor':
-            command = action.get('command')
-            args = action.get('args', [])
-
-            # Map commands to servo controller methods
-            if command == 'set_elevation' and args:
-                servo_controller.set_elevation(args[0])
-            elif command == 'set_translation' and args:
-                servo_controller.set_translation(args[0])
-            elif command == 'move_left' and args:
-                servo_controller.move_left(args[0])
-            elif command == 'move_right' and args:
-                servo_controller.move_right(args[0])
-            elif command == 'move_servo' and len(args) >= 2:
-                servo_controller.move_servo(args[0], args[1])
-            elif command == 'hold_position' and args:
-                servo_controller.hold_position(args[0])
-            else:
-                print(f"Unknown motor command: {command}")
-
-        elif action.get('type') == 'wait':
-            duration = action.get('duration', 1.0)
-            time.sleep(duration)
-
-        # elif action.get('type') == 'vision_check':
-        #     # Placeholder for vision processing
-        #     print(f"Vision check: {action.get('target', 'general')}")
-
-        # Brief pause between actions for safety
-        time.sleep(0.1)
-
-    return True
-
-
-def translate_actions(act_list: List[list]) -> List[Dict[str, Any]]:
-    if not act_list:
-        return []
-
-    command_map = {
-        0: 'set_translation',  # absolute translation position (0-100)
-        1: 'set_elevation',    # absolute elevation position (0-100)
-        2: 'move_left',        # relative rotation (stepper, degrees)
-        3: 'move_right',       # relative rotation (stepper, degrees)
-        4: 'move_servo',       # direct servo control (channel, value)
-        5: 'wait',             # hold position/wait
-    }
-
-    translated_list = []
-    for action in act_list:
-        if not isinstance(action, list) or len(action) < 1:
-            print(f"Invalid action format: {action}")
-            continue
-
-        cmd_id = action[0]
-        if cmd_id in command_map and cmd_id != 5:
-            translated_list.append({
-                'type': 'motor',
-                'command': command_map[cmd_id],
-                'args': action[1:]
-            })
-        elif cmd_id == 5:
-            translated_list.append({
-                'type': 'wait',
-                'duration': action[1] if len(action) > 1 and isinstance(action[1], (int, float)) else 1.0
-            })
-        else:
-            print(f"Unknown command ID: {cmd_id}")
-    return translated_list
+# Motion execution functions now imported from robot_actions module
 
 # === ENHANCED GEMINI REQUEST FUNCTION ===
 def get_response(user_input: str, search_context: Optional[str] = None) -> str:
@@ -206,7 +143,7 @@ def get_response(user_input: str, search_context: Optional[str] = None) -> str:
     if robot_response.act and isinstance(robot_response.act, list):
         translated = translate_actions(robot_response.act)
         if translated:
-            threading.Thread(target=execute_motion_sequence, args=(translated,)).start()
+            threading.Thread(target=execute_motion_sequence, args=(translated, servo_controller)).start()
 
     # fu = robot_response.fu
     # fp = robot_response.fp
@@ -219,6 +156,7 @@ def get_response(user_input: str, search_context: Optional[str] = None) -> str:
 # === MAIN LOOP ===
 print("Robot control system initialized. Listening for wake word 'Mister Carson'...")
 print("Current robot state:", servo_controller.get_current_state())
+print(f"Scheduler status: {'Running ✅' if scheduler.is_running() else 'Stopped ❌'}")
 
 while listening:
     try:
@@ -232,10 +170,35 @@ while listening:
             # Check for exit commands
             if any(word in transcript.lower() for word in exit_words):
                 print("Exit command detected. Shutting down...")
+                scheduler.stop()
                 listening = False
                 break
             
+            # === CHECK IF THIS IS A SCHEDULING REQUEST ===
+            schedule_request = parse_scheduling_request(transcript)
+            
+            if schedule_request:
+                # This is a scheduling request!
+                print(f"📅 Scheduling request detected")
+                print(f"   Command: {schedule_request.command}")
+                print(f"   Trigger: {schedule_request.trigger_time}")
+                print(f"   Mode: {schedule_request.completion_mode}")
+                
+                # Create the scheduled action in database
+                action = create_scheduled_action(
+                    command=schedule_request.command,
+                    trigger_time=schedule_request.trigger_time,
+                    completion_mode=schedule_request.completion_mode,
+                    retry_until=schedule_request.retry_until,
+                    context={'original_transcript': transcript}
+                )
+                
+                # Confirm to user
+                voice.stream_audio(schedule_request.confirmation_message)
+                print(f"✅ Scheduled action ID: {action.id}")
+                continue  # Don't process as normal command
 
+            # === NORMAL INTERACTION ===
             # Check if search is needed
             # Get recent conversation context (pass list, not JSON string)
             recent_context = None
@@ -257,6 +220,7 @@ while listening:
 
     except KeyboardInterrupt:
         print("\nInterrupted by user. Shutting down...")
+        scheduler.stop()
         listening = False
         break
     except Exception as e:
@@ -266,3 +230,5 @@ while listening:
 cam.release()
 cv2.destroyAllWindows()
 servo_controller.close()
+scheduler.stop()
+print("Goodbye!")

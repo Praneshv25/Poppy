@@ -47,7 +47,7 @@ def listen_for_wake_word():
             print(time.time() - start, scores)
             for name, score in scores.items():
                 if score >= THRESHOLD and (now - last_triggered_ts) >= COOLDOWN_SEC:
-                    humanCentering.run_face_detection(max_iterations=50)
+                    humanCentering.run_face_detection(max_iterations=30)
                     print(f"[wake] {name}: {score:.2f}")
                     print("Waiting for motors to settle before recording...")
                     time.sleep(0.125)  # Wait for motors to settle and noise to dissipate

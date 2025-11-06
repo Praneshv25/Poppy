@@ -61,14 +61,8 @@ class ServoController:
         return True
 
     def set_elevation(self, value):
-        """Set absolute elevation position (0-100) with safety limits"""
+        """Set absolute elevation position (0-100)"""
         target_pos = self._clamp_servo(value)
-        
-        # Check if movement exceeds safety limits
-        delta = abs(target_pos - self.elevation_servo_pos)
-        if delta > self.max_servo_change:
-            print(f"Warning: Movement of {delta} exceeds safety limit of {self.max_servo_change}")
-            return False
         
         if target_pos != self.elevation_servo_pos:
             shifted = self.move_servo(self.elevation_motor_port, target_pos)
@@ -79,14 +73,8 @@ class ServoController:
         return False
 
     def set_translation(self, value):
-        """Set absolute translation position (0-100) with safety limits"""
+        """Set absolute translation position (0-100)"""
         target_pos = self._clamp_servo(value)
-        
-        # Check if movement exceeds safety limits
-        delta = abs(target_pos - self.translation_servo_pos)
-        if delta > self.max_servo_change:
-            print(f"Warning: Movement of {delta} exceeds safety limit of {self.max_servo_change}")
-            return False
         
         if target_pos != self.translation_servo_pos:
             shifted = self.move_servo(self.translation_motor_port, target_pos)
