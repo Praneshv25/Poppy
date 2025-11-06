@@ -4,8 +4,8 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 
 BASE_MODEL_ID = "mistralai/Mistral-7B-Instruct-v0.3"
-ADAPTER_PATH = "../meLlamo-expert-robot-v1"
-MERGED_MODEL_PATH = "../meLlamo-expert-robot-v1-merged"
+ADAPTER_PATH = "../data/meLlamo-expert-robot-v1"
+MERGED_MODEL_PATH = "../data/meLlamo-expert-robot-v1-merged"
 
 print("Loading base model...")
 base_model = AutoModelForCausalLM.from_pretrained(

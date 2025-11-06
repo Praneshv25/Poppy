@@ -9,10 +9,11 @@ from typing import Optional
 from tasks.scheduled_actions_v2 import (
     get_due_actions,
     update_action_status,
-    update_trigger_time
+    update_trigger_time,
+    create_scheduled_action
 )
 from tasks.action_executor_v2 import ActionExecutor
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 class ActionScheduler:
     """Background scheduler for automated actions"""
@@ -67,6 +68,36 @@ class ActionScheduler:
                         # Task complete!
                         update_action_status(action.id, 'completed')
                         print(f"✅ Action {action.id} completed: {result['reason']}")
+                        
+                        # Handle recurring tasks
+                        if action.recurring and action.recurring_interval_seconds:
+                            # Check if we should continue recurring
+                            if action.recurring_until:
+                                recurring_deadline = datetime.strptime(action.recurring_until, '%Y-%m-%d %H:%M:%S')
+                                if datetime.now() >= recurring_deadline:
+                                    print(f"⏰ Recurring action {action.id} reached end time, stopping")
+                                    continue
+                            
+                            # Create next occurrence
+                            next_trigger = (
+                                datetime.now() + timedelta(seconds=action.recurring_interval_seconds)
+                            ).strftime('%Y-%m-%d %H:%M:%S')
+                            
+                            # Get parent_id (if this is already a spawned recurring task, keep original parent)
+                            parent_id = action.parent_recurring_id if action.parent_recurring_id else action.id
+                            
+                            new_action = create_scheduled_action(
+                                command=action.command,
+                                trigger_time=next_trigger,
+                                completion_mode=action.completion_mode,
+                                context=action.context,
+                                recurring=True,
+                                recurring_interval_seconds=action.recurring_interval_seconds,
+                                recurring_until=action.recurring_until,
+                                parent_recurring_id=parent_id
+                            )
+                            
+                            print(f"🔄 Recurring action spawned: ID {new_action.id} at {next_trigger}")
                     
                     elif result['should_retry']:
                         # Check if we should still retry

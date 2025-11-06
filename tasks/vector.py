@@ -15,7 +15,7 @@ class LocalEmbeddingFunction(DefaultEmbeddingFunction):
 embedding_function = LocalEmbeddingFunction()
 
 
-chroma_client = chromadb.PersistentClient(path="/Users/PV/PycharmProjects/meLlamo/pvelsDB.chroma")
+chroma_client = chromadb.PersistentClient(path="/Users/PV/PycharmProjects/meLlamo/data/pvelsDB.chroma")
 
 collection = chroma_client.get_or_create_collection(name="pvels", embedding_function=embedding_function)
 

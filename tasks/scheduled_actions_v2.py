@@ -25,7 +25,9 @@ class ScheduledAction:
     def __init__(self, id=None, command=None, trigger_time=None, 
                  completion_mode='one_shot', retry_until=None,
                  status='scheduled', attempt_count=0, 
-                 context=None, last_attempt=None):
+                 context=None, last_attempt=None,
+                 recurring=False, recurring_interval_seconds=None,
+                 recurring_until=None, parent_recurring_id=None):
         self.id = id
         self.command = command  # Natural language: "Remind me to drink water"
         self.trigger_time = trigger_time  # When to execute
@@ -35,6 +37,10 @@ class ScheduledAction:
         self.attempt_count = attempt_count
         self.context = context  # Optional: JSON with additional context
         self.last_attempt = last_attempt
+        self.recurring = recurring  # Is this a recurring task?
+        self.recurring_interval_seconds = recurring_interval_seconds  # Interval for recurring (e.g., 300 for 5 minutes)
+        self.recurring_until = recurring_until  # When to stop recurring (None = forever)
+        self.parent_recurring_id = parent_recurring_id  # Link to original recurring task
 
     def to_dict(self):
         return {
@@ -46,7 +52,11 @@ class ScheduledAction:
             "status": self.status,
             "attempt_count": self.attempt_count,
             "context": self.context,
-            "last_attempt": self.last_attempt
+            "last_attempt": self.last_attempt,
+            "recurring": self.recurring,
+            "recurring_interval_seconds": self.recurring_interval_seconds,
+            "recurring_until": self.recurring_until,
+            "parent_recurring_id": self.parent_recurring_id
         }
 
 def create_scheduled_actions_table():
@@ -63,7 +73,11 @@ def create_scheduled_actions_table():
             status TEXT DEFAULT 'scheduled',
             attempt_count INTEGER DEFAULT 0,
             context TEXT,
-            last_attempt TEXT
+            last_attempt TEXT,
+            recurring INTEGER DEFAULT 0,
+            recurring_interval_seconds INTEGER,
+            recurring_until TEXT,
+            parent_recurring_id INTEGER
         )
     ''')
     conn.commit()
@@ -72,7 +86,11 @@ def create_scheduled_actions_table():
 def create_scheduled_action(command: str, trigger_time: str,
                            completion_mode: str = 'one_shot',
                            retry_until: Optional[str] = None,
-                           context: Optional[Dict] = None) -> ScheduledAction:
+                           context: Optional[Dict] = None,
+                           recurring: bool = False,
+                           recurring_interval_seconds: Optional[int] = None,
+                           recurring_until: Optional[str] = None,
+                           parent_recurring_id: Optional[int] = None) -> ScheduledAction:
     """
     Create a scheduled action
     
@@ -85,6 +103,10 @@ def create_scheduled_action(command: str, trigger_time: str,
             - 'retry_with_condition': Keep retrying, let Gemini decide when done
         retry_until: Optional datetime to stop retrying
         context: Optional additional context (e.g., original full transcript)
+        recurring: Is this a recurring task?
+        recurring_interval_seconds: Interval for recurring (e.g., 300 for 5 minutes)
+        recurring_until: When to stop recurring (None = forever)
+        parent_recurring_id: Link to original recurring task
     """
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -93,9 +115,11 @@ def create_scheduled_action(command: str, trigger_time: str,
     
     cursor.execute('''
         INSERT INTO scheduled_actions 
-        (command, trigger_time, completion_mode, retry_until, context, status)
-        VALUES (?, ?, ?, ?, ?, 'scheduled')
-    ''', (command, trigger_time, completion_mode, retry_until, context_json))
+        (command, trigger_time, completion_mode, retry_until, context, status,
+         recurring, recurring_interval_seconds, recurring_until, parent_recurring_id)
+        VALUES (?, ?, ?, ?, ?, 'scheduled', ?, ?, ?, ?)
+    ''', (command, trigger_time, completion_mode, retry_until, context_json,
+          1 if recurring else 0, recurring_interval_seconds, recurring_until, parent_recurring_id))
     
     action_id = cursor.lastrowid
     conn.commit()
@@ -108,7 +132,11 @@ def create_scheduled_action(command: str, trigger_time: str,
         completion_mode=completion_mode,
         retry_until=retry_until,
         context=context_json,
-        status='scheduled'
+        status='scheduled',
+        recurring=recurring,
+        recurring_interval_seconds=recurring_interval_seconds,
+        recurring_until=recurring_until,
+        parent_recurring_id=parent_recurring_id
     )
 
 def get_due_actions(current_time: str) -> list:
@@ -126,7 +154,10 @@ def get_due_actions(current_time: str) -> list:
     
     actions = []
     for row in rows:
-        action = ScheduledAction(**dict(row))
+        row_dict = dict(row)
+        # Convert INTEGER to bool for recurring
+        row_dict['recurring'] = bool(row_dict.get('recurring', 0))
+        action = ScheduledAction(**row_dict)
         if action.context:
             try:
                 action.context = json.loads(action.context)
@@ -180,7 +211,10 @@ def get_all_scheduled_actions():
     
     actions = []
     for row in rows:
-        action = ScheduledAction(**dict(row))
+        row_dict = dict(row)
+        # Convert INTEGER to bool for recurring
+        row_dict['recurring'] = bool(row_dict.get('recurring', 0))
+        action = ScheduledAction(**row_dict)
         if action.context:
             try:
                 action.context = json.loads(action.context)

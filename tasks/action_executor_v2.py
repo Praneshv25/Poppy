@@ -7,14 +7,14 @@ import time
 import base64
 from datetime import datetime
 from typing import Dict, Any, Optional, List
-import voice
+from agents import voice
 import google.genai as genai
 from google.genai.types import GenerateContentConfig
 from pydantic import BaseModel
 import os
 import threading
 
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 class ScheduledActionResponse(BaseModel):
     """Gemini's response to a scheduled action"""
@@ -35,7 +35,7 @@ class ActionExecutor:
         
         # Load the scheduled action system prompt
         try:
-            with open('scheduled_action_system_prompt.txt', 'r') as f:
+            with open('config/scheduled_action_system_prompt.txt', 'r') as f:
                 self.scheduled_action_prompt_template = f.read()
         except FileNotFoundError:
             print("⚠️ Warning: scheduled_action_system_prompt.txt not found")
@@ -130,7 +130,7 @@ Execute this scheduled command now.
             # Execute actions
             if result.act:
                 try:
-                    from robot_actions import translate_actions, execute_motion_sequence
+                    from agents.robot_actions import translate_actions, execute_motion_sequence
                     translated = translate_actions(result.act)
                     if translated:
                         threading.Thread(

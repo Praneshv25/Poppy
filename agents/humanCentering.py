@@ -3,7 +3,7 @@ import cv2
 import numpy as np
 import time
 
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 sc = ServoController()
 

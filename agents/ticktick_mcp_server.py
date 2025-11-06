@@ -28,7 +28,7 @@ load_dotenv()
 
 
 # Configure file logging for debug output (does not interfere with MCP stdio)
-LOG_PATH = os.getenv("TICKTICK_MCP_LOG", "/Users/PV/PycharmProjects/meLlamo/orange.log")
+LOG_PATH = os.getenv("TICKTICK_MCP_LOG", "/Users/PV/PycharmProjects/meLlamo/data/orange.log")
 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
 logger = logging.getLogger("ticktick_mcp")

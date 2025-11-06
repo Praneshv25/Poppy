@@ -16,6 +16,9 @@ class SchedulingRequest(BaseModel):
     completion_mode: str  # 'one_shot', 'retry_until_acknowledged', 'retry_with_condition'
     retry_until: Optional[str]  # Optional deadline
     confirmation_message: str  # What to say to user
+    recurring: bool  # Is this a recurring task?
+    recurring_interval_seconds: Optional[int]  # Interval in seconds (e.g., 300 for 5 minutes)
+    recurring_until: Optional[str]  # When to stop recurring
 
 def parse_scheduling_request(transcript: str) -> Optional[SchedulingRequest]:
     """
@@ -75,7 +78,10 @@ OUTPUT (JSON):
   "trigger_time": "2025-11-05 15:00:00" (ISO format),
   "completion_mode": "one_shot|retry_until_acknowledged|retry_with_condition",
   "retry_until": "2025-11-05 15:30:00" or null,
-  "confirmation_message": "Okay, I'll wake you up at 7 AM tomorrow"
+  "confirmation_message": "Okay, I'll wake you up at 7 AM tomorrow",
+  "recurring": true/false,
+  "recurring_interval_seconds": 300 (for "every 5 minutes") or null,
+  "recurring_until": "2025-11-05 18:00:00" or null (when to stop recurring)
 }}
 
 EXAMPLES:
@@ -87,7 +93,10 @@ EXAMPLES:
   "trigger_time": "2025-11-06 07:00:00",
   "completion_mode": "retry_with_condition",
   "retry_until": "2025-11-06 08:00:00",
-  "confirmation_message": "Okay, I'll wake you up at 7 AM tomorrow. I'll keep trying until you're out of bed."
+  "confirmation_message": "Okay, I'll wake you up at 7 AM tomorrow. I'll keep trying until you're out of bed.",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
 
 "Remind me to take my medicine at 2pm"
@@ -97,7 +106,36 @@ EXAMPLES:
   "trigger_time": "2025-11-05 14:00:00",
   "completion_mode": "one_shot",
   "retry_until": null,
-  "confirmation_message": "Got it, I'll remind you about your medicine at 2 PM today."
+  "confirmation_message": "Got it, I'll remind you about your medicine at 2 PM today.",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
+}}
+
+"Check every five minutes and make sure I'm not on my phone"
+→ {{
+  "should_schedule": true,
+  "command": "Check that I am not on my phone",
+  "trigger_time": "2025-11-05 {(current_time + timedelta(minutes=5)).strftime('%H:%M:%S')}",
+  "completion_mode": "one_shot",
+  "retry_until": null,
+  "confirmation_message": "I'll check every 5 minutes to make sure you're not on your phone.",
+  "recurring": true,
+  "recurring_interval_seconds": 300,
+  "recurring_until": null
+}}
+
+"Remind me to stretch every hour until 5pm"
+→ {{
+  "should_schedule": true,
+  "command": "Remind me to stretch",
+  "trigger_time": "2025-11-05 {(current_time + timedelta(hours=1)).strftime('%H:%M:%S')}",
+  "completion_mode": "one_shot",
+  "retry_until": null,
+  "confirmation_message": "I'll remind you to stretch every hour until 5 PM.",
+  "recurring": true,
+  "recurring_interval_seconds": 3600,
+  "recurring_until": "2025-11-05 17:00:00"
 }}
 
 "Check if the package arrived at 5pm"
@@ -107,7 +145,10 @@ EXAMPLES:
   "trigger_time": "2025-11-05 17:00:00",
   "completion_mode": "one_shot",
   "retry_until": null,
-  "confirmation_message": "I'll check for the package at 5 PM today."
+  "confirmation_message": "I'll check for the package at 5 PM today.",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
 
 "Remind me to drink water"
@@ -117,7 +158,10 @@ EXAMPLES:
   "trigger_time": "2025-11-05 {(current_time + timedelta(minutes=5)).strftime('%H:%M:%S')}",
   "completion_mode": "one_shot",
   "retry_until": null,
-  "confirmation_message": "I'll remind you to drink water in 5 minutes."
+  "confirmation_message": "I'll remind you to drink water in 5 minutes.",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
 
 "What's the weather like?"
@@ -127,7 +171,10 @@ EXAMPLES:
   "trigger_time": "",
   "completion_mode": "",
   "retry_until": null,
-  "confirmation_message": ""
+  "confirmation_message": "",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
 
 "Let me know who won the election"
@@ -137,7 +184,10 @@ EXAMPLES:
   "trigger_time": "",
   "completion_mode": "",
   "retry_until": null,
-  "confirmation_message": ""
+  "confirmation_message": "",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
 
 "Tell me about the news today"
@@ -147,7 +197,10 @@ EXAMPLES:
   "trigger_time": "",
   "completion_mode": "",
   "retry_until": null,
-  "confirmation_message": ""
+  "confirmation_message": "",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
 
 "Can you search for information about X"
@@ -157,7 +210,10 @@ EXAMPLES:
   "trigger_time": "",
   "completion_mode": "",
   "retry_until": null,
-  "confirmation_message": ""
+  "confirmation_message": "",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
 
 "Tell me when it's 3 o'clock"
@@ -167,8 +223,20 @@ EXAMPLES:
   "trigger_time": "2025-11-05 15:00:00",
   "completion_mode": "one_shot",
   "retry_until": null,
-  "confirmation_message": "I'll let you know when it's 3 PM."
+  "confirmation_message": "I'll let you know when it's 3 PM.",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
 }}
+
+RECURRING INTERVALS:
+- "every X minutes" → recurring_interval_seconds = X * 60
+- "every X hours" → recurring_interval_seconds = X * 3600
+- "every hour" → recurring_interval_seconds = 3600
+- "every day" → recurring_interval_seconds = 86400
+- "every 30 seconds" → recurring_interval_seconds = 30
+
+If "until [time]" is mentioned, set recurring_until. Otherwise null (runs forever until manually stopped).
 
 TIME PARSING RULES:
 - "7am tomorrow" → next day at 7:00

@@ -1,4 +1,4 @@
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 sc = ServoController()
 

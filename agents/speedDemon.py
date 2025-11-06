@@ -1,4 +1,4 @@
-import voice
+from agents import voice
 import google.genai as genai
 from google.genai.types import GenerateContentConfig
 import cv2
@@ -24,7 +24,7 @@ class RobotResponse(BaseModel):
 load_dotenv()
 
 # === IMPORT SERVO CONTROLLER ===
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 # === IMPORT WAKE WORD & TRANSCRIPTION ===
 from wakeWord.wake import listen_for_wake_word
@@ -35,7 +35,7 @@ from tasks.command_parser import parse_scheduling_request
 from tasks.scheduled_actions_v2 import create_scheduled_action
 
 # === IMPORT ROBOT ACTIONS ===
-from robot_actions import translate_actions, execute_motion_sequence
+from agents.robot_actions import translate_actions, execute_motion_sequence
 
 
 # === GEMINI CLIENT SETUP ===
@@ -50,7 +50,7 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    with open('speedDemon_system_prompt.txt', 'r') as f:
+    with open('config/speedDemon_system_prompt.txt', 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: speedDemon_system_prompt.txt not found. Please create the file with the system prompt content.")
@@ -190,7 +190,10 @@ while listening:
                     trigger_time=schedule_request.trigger_time,
                     completion_mode=schedule_request.completion_mode,
                     retry_until=schedule_request.retry_until,
-                    context={'original_transcript': transcript}
+                    context={'original_transcript': transcript},
+                    recurring=schedule_request.recurring,
+                    recurring_interval_seconds=schedule_request.recurring_interval_seconds,
+                    recurring_until=schedule_request.recurring_until
                 )
                 
                 # Confirm to user

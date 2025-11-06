@@ -12,7 +12,7 @@ from typing import Optional, List, Dict, Any
 from llama_cpp import Llama
 
 # === IMPORT SERVO CONTROLLER ===
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 # ==============================================================================
 # === 1. LOAD MODELS (GGUF Format for Mac Performance)
@@ -68,7 +68,7 @@ volume = engine.getProperty('volume')
 
 # === System Prompt ===
 try:
-    with open('pices_system_prompt.txt', 'r') as f:
+    with open('localExperiments/pices_system_prompt.txt', 'r') as f:
         INSTRUCTION_PROMPT = f.read()
 except FileNotFoundError:
     print("Error: scorpio_system_prompt.txt not found.")

@@ -4,7 +4,7 @@ Separated to avoid circular imports
 """
 import time
 from typing import List, Dict, Any
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 def translate_actions(act_list: List[list], servo_controller: ServoController = None) -> List[Dict[str, Any]]:
     """

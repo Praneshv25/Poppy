@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from deepgram import AsyncDeepgramClient
 from deepgram.core.events import EventType
 from deepgram.extensions.types.sockets import ListenV2SocketClientResponse
-import humanCentering
+from agents import humanCentering
 
 load_dotenv()
 

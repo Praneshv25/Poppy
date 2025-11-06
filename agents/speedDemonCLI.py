@@ -29,7 +29,7 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    with open('speedDemon_system_prompt.txt', 'r') as f:
+    with open('config/speedDemon_system_prompt.txt', 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: speedDemon_system_prompt.txt not found. Please create the file with the system prompt content.")

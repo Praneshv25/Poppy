@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # === IMPORT SERVO CONTROLLER ===
-from ServoController import ServoController
+from agents.ServoController import ServoController
 
 # === ENHANCED VOICE SETUP ===
 engine = pyttsx3.init()
@@ -36,7 +36,7 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    with open('libra_system_prompt.txt', 'r') as f:
+    with open('config/libra_system_prompt.txt', 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: libra_system_prompt.txt not found. Please create the file with the system prompt content.")
