@@ -45,7 +45,9 @@ _cache_max_size = 100
 _cache_modified = False  # Track if cache needs saving
 
 try:
-    with open('search/search_sys_prompt.txt', 'r') as f:
+    # Use absolute path relative to this file's location
+    prompt_path = Path(__file__).parent / 'search_sys_prompt.txt'
+    with open(prompt_path, 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: search_sys_prompt.txt not found. Please create the file with the system prompt content.")
@@ -213,9 +215,9 @@ Respond with ONLY the number: 100, 150, or 250"""
             cache_query_result(query, token_limit)
             print(f"[Gemini Router] Determined: {token_limit} tokens (cached)")
             
-            # Auto-save after every 5 new entries to balance performance vs data safety
-            if len(_recent_query_cache) % 5 == 0:
-                save_cache_to_disk()
+            # Save to disk immediately to ensure persistence
+            # (Low overhead since this only runs on cache misses)
+            save_cache_to_disk()
             
             return token_limit
         else:

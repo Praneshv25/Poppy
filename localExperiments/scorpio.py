@@ -45,7 +45,9 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    with open('localExperiments/scorpio_system_prompt.txt', 'r') as f:
+    # Use absolute path relative to this file's location
+    prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scorpio_system_prompt.txt')
+    with open(prompt_path, 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: libra_system_prompt.txt not found. Please create the file with the system prompt content.")

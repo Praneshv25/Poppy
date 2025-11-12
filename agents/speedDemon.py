@@ -1,3 +1,8 @@
+import sys
+import os
+# Add project root to Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from agents import voice
 import google.genai as genai
 from google.genai.types import GenerateContentConfig
@@ -50,7 +55,9 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    with open('config/speedDemon_system_prompt.txt', 'r') as f:
+    # Use absolute path relative to project root
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'speedDemon_system_prompt.txt')
+    with open(config_path, 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: speedDemon_system_prompt.txt not found. Please create the file with the system prompt content.")

@@ -68,7 +68,9 @@ volume = engine.getProperty('volume')
 
 # === System Prompt ===
 try:
-    with open('localExperiments/pices_system_prompt.txt', 'r') as f:
+    # Use absolute path relative to this file's location
+    prompt_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'pices_system_prompt.txt')
+    with open(prompt_path, 'r') as f:
         INSTRUCTION_PROMPT = f.read()
 except FileNotFoundError:
     print("Error: scorpio_system_prompt.txt not found.")

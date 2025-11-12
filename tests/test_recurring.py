@@ -3,6 +3,11 @@
 Test script for recurring task functionality
 Creates a simple recurring task and demonstrates it works
 """
+import sys
+import os
+# Add project root to Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from datetime import datetime, timedelta
 from tasks.scheduled_actions_v2 import (
     create_scheduled_action,

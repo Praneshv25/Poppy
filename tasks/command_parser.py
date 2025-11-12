@@ -43,21 +43,49 @@ Current date/time: {current_time_str} ({current_day})
 
 User said: "{transcript}"
 
-IMPORTANT: Only consider this a scheduling request if there is EXPLICIT time-related language indicating a FUTURE action.
+╔═══════════════════════════════════════════════════════════════╗
+║  CRITICAL: BE EXTREMELY STRICT - Default to NOT scheduling   ║
+╚═══════════════════════════════════════════════════════════════╝
 
-Scheduling indicators (YES):
-- "at [time]" - "at 7am", "at 3pm", "at midnight"
-- "in [duration]" - "in 20 minutes", "in 2 hours"
-- "tomorrow", "tonight", "next week"
-- "wake me up at/in/tomorrow"
-- "remind me at/in/tomorrow"
-- "tell me when it's [time]"
+INFORMATION QUESTIONS (NOT scheduling - answer NOW):
+❌ "When is [event]?" → User wants to KNOW when something is
+❌ "When's [event]?" → User wants INFORMATION
+❌ "What time is [event]?" → User wants to KNOW the time
+❌ "When does [thing] happen?" → User wants INFORMATION
+❌ "What is [thing]?" → User wants INFORMATION
+❌ "Tell me about [thing]" → User wants INFORMATION NOW
+❌ "How's [thing]?" → User wants current STATUS
+❌ "What's [thing]?" → User wants INFORMATION NOW
+
+SCHEDULING REQUESTS (YES scheduling - do at FUTURE time):
+✅ "Wake me up at [time]"
+✅ "Remind me to [action] at [time]"
+✅ "Tell me when it's [specific time]" (e.g. "Tell me when it's 3pm")
+✅ "Remind me [action] in [duration]"
+✅ "Check [thing] at [time]"
+✅ "[Action] every [interval]" (recurring)
+✅ "Let me know at [time]" (WITH specific future time)
+
+KEY DISTINCTION:
+- "When is X?" = Give me information NOW ❌
+- "Tell me at X" or "Remind me at X" = Do something LATER ✅
+
+MUST HAVE ONE OF THESE EXPLICIT PHRASES:
+- "remind me"
+- "wake me up"
+- "tell me when it's [specific time]" (NOT "tell me when [event] is")
+- "at [specific time]" (with action: "check at 5pm")
+- "in [duration]" (with action: "remind in 30 minutes")
+- "every [interval]" (recurring)
+- "check [thing] at [time]"
 
 NOT scheduling (NO):
-- "let me know [about something]" (without specific future time)
-- "tell me about" (current information)
-- Questions without time indicators
+- Questions starting with "When", "What", "Where", "How", "Who", "Why"
+- "let me know [about something]" (without "at [time]")
+- "tell me about" (information request)
+- "tell me when [event] is" (asking for info, NOT scheduling)
 - "today" when asking for current information
+- Any question asking for facts/information
 
 Determine:
 1. Is this a request to schedule a FUTURE action with a SPECIFIC time?
@@ -203,6 +231,48 @@ EXAMPLES:
   "recurring_until": null
 }}
 
+"When's the next Super Bowl?"
+→ {{
+  "should_schedule": false,
+  "command": "",
+  "trigger_time": "",
+  "completion_mode": "",
+  "retry_until": null,
+  "confirmation_message": "",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
+}}
+REASON: This is asking for INFORMATION about when an event occurs, NOT requesting to be notified at that time.
+
+"When is the meeting?"
+→ {{
+  "should_schedule": false,
+  "command": "",
+  "trigger_time": "",
+  "completion_mode": "",
+  "retry_until": null,
+  "confirmation_message": "",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
+}}
+REASON: User wants to KNOW when the meeting is, not be reminded.
+
+"What time does the game start?"
+→ {{
+  "should_schedule": false,
+  "command": "",
+  "trigger_time": "",
+  "completion_mode": "",
+  "retry_until": null,
+  "confirmation_message": "",
+  "recurring": false,
+  "recurring_interval_seconds": null,
+  "recurring_until": null
+}}
+REASON: User wants to KNOW the time, not schedule a notification.
+
 "Can you search for information about X"
 → {{
   "should_schedule": false,
@@ -255,11 +325,33 @@ COMPLETION MODE GUIDELINES:
 - Alarms/notifications: one_shot
 - Monitoring tasks: retry_with_condition (keep checking until condition met)
 
-CRITICAL: Be CONSERVATIVE in detecting scheduling requests!
-- If there's NO explicit future time indicator → NOT a scheduling request
-- "Let me know", "tell me about", "what is" without time → NOT scheduling
-- Questions about current events → NOT scheduling
-- Only schedule when user CLEARLY wants something to happen at a FUTURE time
+╔═══════════════════════════════════════════════════════════════╗
+║                    CRITICAL FINAL RULES                       ║
+╚═══════════════════════════════════════════════════════════════╝
+
+Be EXTREMELY CONSERVATIVE in detecting scheduling requests!
+
+DEFAULT TO FALSE unless ALL of these are true:
+1. User uses explicit scheduling verbs: "remind", "wake", "check at", "tell me at"
+2. There is a clear FUTURE time/duration specified
+3. User wants an ACTION performed later, NOT information now
+
+NEVER SCHEDULE:
+❌ Questions (When? What? Where? How? Who? Why?)
+❌ "When is [event]?" - user wants info NOW
+❌ "Tell me about [thing]" - user wants info NOW
+❌ "What's [thing]?" - user wants info NOW
+❌ "Let me know [info]" without "at [time]"
+❌ Information requests about future events
+
+ONLY SCHEDULE:
+✅ "Remind me [action] at [time]"
+✅ "Wake me up at [time]"
+✅ "Tell me when it's [specific clock time]"
+✅ "Check [thing] at [time]"
+✅ "[Action] every [interval]"
+
+When in doubt → should_schedule = false
 """
     
     try:

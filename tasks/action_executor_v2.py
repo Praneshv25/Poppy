@@ -35,7 +35,9 @@ class ActionExecutor:
         
         # Load the scheduled action system prompt
         try:
-            with open('config/scheduled_action_system_prompt.txt', 'r') as f:
+            # Use absolute path relative to project root
+            config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'scheduled_action_system_prompt.txt')
+            with open(config_path, 'r') as f:
                 self.scheduled_action_prompt_template = f.read()
         except FileNotFoundError:
             print("⚠️ Warning: scheduled_action_system_prompt.txt not found")

@@ -1,6 +1,11 @@
 """
 Simple CLI for managing scheduled actions
 """
+import sys
+import os
+# Add project root to Python path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from datetime import datetime, timedelta
 from tasks.scheduled_actions_v2 import (
     get_all_scheduled_actions,

@@ -25,8 +25,11 @@ def my_function_to_get_audio_frame():
 # openwakeword.utils.download_models()
 
 # Instantiate the model(s)
+# Use absolute path relative to this file's location
+wake_word_dir = os.path.dirname(os.path.abspath(__file__))
+model_path = os.path.join(wake_word_dir, "heimdell", "Heimdell Model.onnx")
 model = Model(
-    wakeword_models=["wakeWord/heimdell/Heimdell Model.onnx"],  # can also leave this argument empty to load all of the included pre-trained models
+    wakeword_models=[model_path],  # can also leave this argument empty to load all of the included pre-trained models
 )
 
 THRESHOLD = 0.01

@@ -36,8 +36,9 @@ generation_config = GenerateContentConfig(
 
 # === SYSTEM PROMPT ===
 try:
-    # We now read the modified system prompt from the file
-    with open('config/libra_speed_demon_sys_prompt.txt', 'r') as f:
+    # Use absolute path relative to project root
+    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'config', 'libra_speed_demon_sys_prompt.txt')
+    with open(config_path, 'r') as f:
         system_prompt = f.read()
 except FileNotFoundError:
     print("Error: libra_system_prompt.txt not found. Please create the file with the system prompt content.")
