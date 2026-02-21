@@ -11,10 +11,29 @@ import atexit
 from pathlib import Path
 from typing import Dict, Tuple
 
-load_dotenv()
-client_perplexity = Perplexity()
+load_dotenv(override=True)
+client_perplexity = Perplexity(api_key=os.getenv("PERPLEXITY_API_KEY"))
 
 client = genai.Client(api_key=os.getenv("API_KEY"))
+
+
+def _extract_text(response) -> str:
+    """Safely extract text from Gemini 3 response, filtering out thought_signature parts."""
+    try:
+        parts = response.candidates[0].content.parts
+        if not parts:
+            return ""
+        text_parts = []
+        for part in parts:
+            if hasattr(part, "text") and part.text is not None:
+                text_parts.append(part.text)
+        return "".join(text_parts).strip()
+    except (IndexError, AttributeError, TypeError):
+        try:
+            return (response.text or "").strip()
+        except Exception:
+            return ""
+
 
 # === CACHE CONFIGURATION ===
 CACHE_FILE = Path(__file__).parent / "query_complexity_cache.json"
@@ -201,7 +220,7 @@ Respond with ONLY the number: 100, 150, or 250"""
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=analysis_prompt,
             config=GenerateContentConfig(
                 temperature=0.1,
@@ -209,7 +228,7 @@ Respond with ONLY the number: 100, 150, or 250"""
             )
         )
         
-        token_limit = int(response.text.strip())
+        token_limit = int(_extract_text(response))
         
         if token_limit in [100, 150, 250]:
             cache_query_result(query, token_limit)
@@ -249,7 +268,7 @@ Conversation history:
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=context_prompt,
             config=GenerateContentConfig(
                 temperature=0.3,  # Lower temperature for more focused extraction
@@ -259,11 +278,10 @@ Conversation history:
         )
         
         # Check if response has text content
-        if not response.text:
+        result = _extract_text(response)
+        if not result:
             print("[Context extraction] No text in response")
             return None
-        
-        result = response.text.strip()
         print(f"[Context extraction] Extracted: {result[:100]}...")
         return result if result.lower() != "none" else None
     except Exception as e:
@@ -289,12 +307,12 @@ def validate_search_need(query, conversation_context=None):
     
     # Ask Gemini if search is needed (using full conversation context)
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3-flash-preview",
         contents=validation_prompt,
         config=generation_config
     )
     
-    if "Yes" in response.text:
+    if "Yes" in _extract_text(response):
         # Build search query: only include context if it's actually relevant
         if relevant_context:
             # Context is relevant - enrich the search query

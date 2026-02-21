@@ -141,4 +141,3 @@ class Task:
     def sort_by_priority(tasks: List["Task"], reverse: bool = True) -> List["Task"]:
         """Sort tasks by priority (default: high to low)."""
         return sorted(tasks, key=lambda t: t.priority, reverse=reverse)
-

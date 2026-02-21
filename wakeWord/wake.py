@@ -11,7 +11,7 @@ from deepgram.core.events import EventType
 from deepgram.extensions.types.sockets import ListenV2SocketClientResponse
 from agents import humanCentering
 
-load_dotenv()
+load_dotenv(override=True)
 
 SR = 16000
 FRAME_MS = 80
@@ -60,7 +60,7 @@ def listen_for_wake_word():
         raise
 
 
-client = AsyncDeepgramClient()
+client = AsyncDeepgramClient(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
 # Transcription settings
 TRANSCRIBE_DURATION = 5  # seconds to record after wake word

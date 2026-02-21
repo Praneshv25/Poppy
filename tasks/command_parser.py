@@ -356,7 +356,7 @@ When in doubt → should_schedule = false
     
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash-exp",
+            model="gemini-3-flash-preview",
             contents=[{"role": "user", "parts": [{"text": parsing_prompt}]}],
             config=GenerateContentConfig(
                 temperature=0.3,

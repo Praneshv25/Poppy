@@ -388,7 +388,7 @@ def generate_dataset():
     print(f"Sending request to generate {NUM_EXAMPLES_TO_GENERATE} examples. This may take a minute...")
     try:
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash-preview",
             contents=prompt_template,
             config=GenerateContentConfig(
                 temperature=0.8,

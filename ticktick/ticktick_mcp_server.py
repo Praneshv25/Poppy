@@ -2,7 +2,7 @@
 """
 TickTick MCP Server
 A Model Context Protocol server for interacting with TickTick's API.
-Supports retrieving and creating tasks.
+Supports retrieving, creating, updating, completing, and deleting tasks.
 """
 
 import asyncio
@@ -14,8 +14,8 @@ import time
 import logging
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
-from ticktickToken import get_access_token
-from task import Task
+from ticktick.ticktickToken import get_access_token
+from ticktick.task import Task
 
 import requests
 from mcp.server.models import InitializationOptions
@@ -24,7 +24,7 @@ from mcp.server.stdio import stdio_server
 from mcp import types
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
 
 # Configure file logging for debug output (does not interfere with MCP stdio)
@@ -140,17 +140,19 @@ class TickTickAPI:
             tasks = [t for t in tasks if t.get("status", 0) != 2]
         return tasks if isinstance(tasks, list) else []
     
-    def get_task_by_id(self, task_id: str) -> Dict[str, Any]:
+    def get_task_by_id(self, project_id: str, task_id: str) -> Dict[str, Any]:
         """
-        Retrieve a specific task by ID.
+        Retrieve a specific task by project ID and task ID.
+        Uses GET /open/v1/project/{projectId}/task/{taskId}
         
         Args:
+            project_id: The project ID that owns the task
             task_id: The task ID
         
         Returns:
             Task dictionary
         """
-        endpoint = f"task/{task_id}"
+        endpoint = f"project/{project_id}/task/{task_id}"
         return self._make_request("GET", endpoint)
     
     def create_task(
@@ -165,6 +167,7 @@ class TickTickAPI:
     ) -> Dict[str, Any]:
         """
         Create a new task in TickTick.
+        Uses POST /open/v1/task
         
         Args:
             title: Task title (required)
@@ -223,9 +226,11 @@ class TickTickAPI:
     ) -> Dict[str, Any]:
         """
         Update an existing task.
+        Uses POST /open/v1/task/{taskId}
         
         Args:
             task_id: Task ID to update
+            project_id: Project ID that owns the task
             title: New title
             content: New content
             status: Task status (0=active, 2=completed)
@@ -257,30 +262,40 @@ class TickTickAPI:
         logger.debug(f"update_task body: {current_task}")
         return self._make_request("POST", endpoint, data=current_task)
     
-    def complete_task(self, task_id: str, project_id: str) -> Dict[str, Any]:
+    def complete_task(self, project_id: str, task_id: str) -> Dict[str, Any]:
         """
         Mark a task as completed.
+        Uses POST /open/v1/project/{projectId}/task/{taskId}/complete
         
         Args:
+            project_id: Project ID that owns the task
             task_id: Task ID to complete
         
         Returns:
-            Updated task dictionary
+            Completed task dictionary
         """
-        return self.update_task(task_id, project_id, status=2)
+        endpoint = f"project/{project_id}/task/{task_id}/complete"
+        return self._make_request("POST", endpoint)
     
-    def delete_task(self, task_id: str, project_id: str) -> Dict[str, Any]:
+    def delete_task(self, project_id: str, task_id: str) -> Dict[str, Any]:
         """
-        Delete a task by ID.
+        Delete a task by project ID and task ID.
+        Uses DELETE /open/v1/project/{projectId}/task/{taskId}
+        
+        Args:
+            project_id: Project ID that owns the task
+            task_id: Task ID to delete
+        
+        Returns:
+            Empty dict on success
         """
-        endpoint = f"task/{task_id}"
-        # TickTick requires id and projectId in the body
-        body = {"id": task_id, "projectId": project_id}
-        return self._make_request("DELETE", endpoint, data=body)
+        endpoint = f"project/{project_id}/task/{task_id}"
+        return self._make_request("DELETE", endpoint)
     
     def get_projects(self) -> List[Dict[str, Any]]:
         """
         Retrieve all projects/lists.
+        Uses GET /open/v1/project
         
         Returns:
             List of project dictionaries
@@ -656,7 +671,7 @@ async def handle_call_tool(
             )
             return [types.TextContent(
                 type="text",
-                text=f"✅ Task created successfully!\n\n{json.dumps(task, indent=2)}"
+                text=f"Task created successfully!\n\n{json.dumps(task, indent=2)}"
             )]
         
         elif name == "update_task":
@@ -671,7 +686,7 @@ async def handle_call_tool(
             if not in_project:
                 return [types.TextContent(
                     type="text",
-                    text=f"❌ Task {task_id} does not belong to project {project_id}."
+                    text=f"Error: Task {task_id} does not belong to project {project_id}."
                 )]
             task = ticktick_client.update_task(
                 task_id=task_id,
@@ -684,7 +699,7 @@ async def handle_call_tool(
             )
             return [types.TextContent(
                 type="text",
-                text=f"✅ Task updated successfully!\n\n{json.dumps(task, indent=2)}"
+                text=f"Task updated successfully!\n\n{json.dumps(task, indent=2)}"
             )]
         
         elif name == "delete_task":
@@ -699,12 +714,12 @@ async def handle_call_tool(
             if not in_project:
                 return [types.TextContent(
                     type="text",
-                    text=f"❌ Task {task_id} does not belong to project {project_id}."
+                    text=f"Error: Task {task_id} does not belong to project {project_id}."
                 )]
-            result = ticktick_client.delete_task(task_id, project_id)
+            result = ticktick_client.delete_task(project_id, task_id)
             return [types.TextContent(
                 type="text",
-                text=f"🗑️ Task deleted successfully!\n\n{json.dumps(result, indent=2)}"
+                text=f"Task deleted successfully!\n\n{json.dumps(result, indent=2)}"
             )]
         
         elif name == "complete_task":
@@ -719,12 +734,12 @@ async def handle_call_tool(
             if not in_project:
                 return [types.TextContent(
                     type="text",
-                    text=f"❌ Task {task_id} does not belong to project {project_id}."
+                    text=f"Error: Task {task_id} does not belong to project {project_id}."
                 )]
-            task = ticktick_client.complete_task(task_id, project_id)
+            task = ticktick_client.complete_task(project_id, task_id)
             return [types.TextContent(
                 type="text",
-                text=f"✅ Task marked as completed!\n\n{json.dumps(task, indent=2)}"
+                text=f"Task marked as completed!\n\n{json.dumps(task, indent=2)}"
             )]
         
         elif name == "get_projects":
@@ -737,13 +752,13 @@ async def handle_call_tool(
         else:
             return [types.TextContent(
                 type="text",
-                text=f"❌ Unknown tool: {name}"
+                text=f"Error: Unknown tool: {name}"
             )]
     
     except Exception as e:
         return [types.TextContent(
             type="text",
-            text=f"❌ Error executing {name}: {str(e)}"
+            text=f"Error executing {name}: {str(e)}"
         )]
 
 
@@ -752,12 +767,16 @@ async def main():
     global ticktick_client
     
     # Initialize TickTick client from environment variable or via token helper
-    print("TOKEN_PRESENT", bool(os.getenv("TICKTICK_ACCESS_TOKEN")), file=os.sys.stderr)
     # Try to initialize now; if it fails, lazy init will be attempted on first tool call
     if ensure_client_initialized():
-        print("✅ TickTick MCP Server initialized successfully", file=os.sys.stderr)
+        source = "env var" if os.getenv("TICKTICK_ACCESS_TOKEN") else "cached/refreshed token"
+        print(f"TickTick MCP Server initialized successfully (via {source})", file=os.sys.stderr)
     else:
-        print("⚠️  TickTick client not initialized yet; will attempt on first tool call.", file=os.sys.stderr)
+        print(
+            "TickTick client not initialized. Set TICKTICK_ACCESS_TOKEN env var, "
+            "or run `python -m ticktick.ticktickToken` to authenticate via browser.",
+            file=os.sys.stderr
+        )
     
     # Run the server
     async with stdio_server() as (read_stream, write_stream):
@@ -777,4 +796,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-

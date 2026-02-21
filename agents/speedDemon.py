@@ -17,6 +17,8 @@ from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 import search.search as search
 from pydantic import BaseModel
+from ticktick.agent import TickTickAgent
+from ticktick.task_poller import TickTickPoller
 
 # Define the structured response model
 class RobotResponse(BaseModel):
@@ -26,7 +28,7 @@ class RobotResponse(BaseModel):
     fp: str  # follow-up prompt
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
 # === IMPORT SERVO CONTROLLER ===
 from agents.ServoController import ServoController
@@ -74,6 +76,23 @@ servo_controller.set_translation(1)  # Start at middle translation
 scheduler = ActionScheduler(servo_controller, check_interval=10)
 scheduler.start()
 
+# === TICKTICK SUB-AGENT ===
+ticktick_agent = TickTickAgent()
+if ticktick_agent.start():
+    print(f"TickTick sub-agent: Running ✅")
+else:
+    print(f"TickTick sub-agent: Failed to start ❌ (task management unavailable)")
+
+# === TICKTICK BACKGROUND POLLER ===
+task_poller = TickTickPoller(
+    ticktick_agent=ticktick_agent,
+    voice_fn=voice.stream_audio,
+    servo_controller=servo_controller,
+    check_interval_minutes=30,
+)
+if ticktick_agent.is_running():
+    task_poller.start()
+
 # === INITIAL STATE ===
 conversation_history = []
 listening = True
@@ -96,7 +115,7 @@ def get_frame_data():
 # Motion execution functions now imported from robot_actions module
 
 # === ENHANCED GEMINI REQUEST FUNCTION ===
-def get_response(user_input: str, search_context: Optional[str] = None) -> str:
+def get_response(user_input: str, search_context: Optional[str] = None, task_context: Optional[str] = None) -> str:
     global conversation_history
 
     frame_data = get_frame_data()
@@ -115,7 +134,11 @@ def get_response(user_input: str, search_context: Optional[str] = None) -> str:
     # Add search context if provided
     if search_context:
         vision_parts.append({"text": f"Search context: {search_context}"})
-    
+
+    # Add task context if provided (from TickTick sub-agent)
+    if task_context:
+        vision_parts.append({"text": f"Task context: {task_context}"})
+
     vision_parts.extend([
         {"text": "Here is the current visual scene."},
         {"inline_data": {
@@ -127,7 +150,7 @@ def get_response(user_input: str, search_context: Optional[str] = None) -> str:
     conversation_history.append({"role": "user", "parts": vision_parts})
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3-flash-preview",
         contents=conversation_history,
         config=GenerateContentConfig(
             system_instruction=system_prompt,
@@ -206,31 +229,52 @@ while listening:
                 # Confirm to user
                 voice.stream_audio(schedule_request.confirmation_message)
                 print(f"✅ Scheduled action ID: {action.id}")
+
+                # Also add to TickTick for persistent tracking
+                if ticktick_agent.is_running():
+                    try:
+                        ticktick_agent.ask(
+                            f"Create a task: '{schedule_request.command}' "
+                            f"with due date {schedule_request.trigger_time}"
+                        )
+                        print(f"📋 Also added to TickTick")
+                    except Exception as e:
+                        print(f"📋 TickTick sync skipped: {e}")
+
                 continue  # Don't process as normal command
 
             # === NORMAL INTERACTION ===
-            # Check if search is needed
             # Get recent conversation context (pass list, not JSON string)
             recent_context = None
             if len(conversation_history) > 0:
                 # Pass last 4 items (2 question-answer pairs) as a list
                 recent_context = conversation_history[-4:] if len(conversation_history) >= 4 else conversation_history
 
-            need_search, search_result = search.validate_search_need(transcript, conversation_context=recent_context)
-            
-            # If search is needed, include search context in the request
-            if need_search:
-                reply = get_response(transcript, search_context=search_result)
-            else:
-                # Proceed as normal without search context
-                reply = get_response(transcript)
+            # === CHECK IF THIS IS A TASK MANAGEMENT REQUEST ===
+            need_task, task_result = ticktick_agent.validate_task_need(
+                transcript, conversation_context=recent_context
+            )
+
+            # === CHECK IF SEARCH IS NEEDED ===
+            need_search, search_result = search.validate_search_need(
+                transcript, conversation_context=recent_context
+            )
+
+            # Build response with any available context
+            reply = get_response(
+                transcript,
+                search_context=search_result if need_search else None,
+                task_context=task_result if need_task else None,
+            )
             voice.stream_audio(reply)
         else:
             print("No transcript received.")
 
     except KeyboardInterrupt:
         print("\nInterrupted by user. Shutting down...")
+        task_poller.stop()
         scheduler.stop()
+        ticktick_agent.stop()
         listening = False
         break
     except Exception as e:
@@ -239,6 +283,8 @@ while listening:
 # Cleanup
 cam.release()
 cv2.destroyAllWindows()
+task_poller.stop()
 servo_controller.close()
 scheduler.stop()
+ticktick_agent.stop()
 print("Goodbye!")

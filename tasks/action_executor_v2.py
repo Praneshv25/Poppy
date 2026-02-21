@@ -99,7 +99,7 @@ Execute this scheduled command now.
         try:
             # Call Gemini with the scheduled action
             response = self.client.models.generate_content(
-                model="gemini-2.0-flash-exp",
+                model="gemini-3-flash-preview",
                 contents=[
                     {
                         "role": "user",

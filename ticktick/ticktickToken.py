@@ -10,7 +10,7 @@ import time
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
 # Configuration (prefer environment variables; fall back to constants)
 CLIENT_ID = os.getenv("TICKTICK_CLIENT_ID")

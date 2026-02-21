@@ -8,7 +8,8 @@ A Model Context Protocol (MCP) server that provides integration with TickTick's 
 - ✅ **Get Task Details** - Retrieve a specific task by ID
 - ✅ **Create Tasks** - Create new tasks with title, description, due dates, priority, and tags
 - ✅ **Update Tasks** - Modify existing tasks
-- ✅ **Complete Tasks** - Mark tasks as done
+- ✅ **Complete Tasks** - Mark tasks as done via dedicated complete endpoint
+- ✅ **Delete Tasks** - Remove tasks by project and task ID
 - ✅ **Get Projects** - List all your TickTick projects/lists
 
 ## Installation
@@ -16,7 +17,7 @@ A Model Context Protocol (MCP) server that provides integration with TickTick's 
 ### 1. Install Dependencies
 
 ```bash
-cd /Users/PV/PycharmProjects/meLlamo
+cd /Users/PV/PycharmProjects/Poppy
 pip install -r requirements.txt
 ```
 
@@ -64,7 +65,7 @@ echo 'TICKTICK_ACCESS_TOKEN=your_access_token_here' > .env
 ### Running the Server Standalone
 
 ```bash
-python ticktick_mcp_server.py
+python -m ticktick.ticktick_mcp_server
 ```
 
 ### Configuring with Claude Desktop
@@ -76,7 +77,8 @@ Add to your MCP configuration file (`~/.config/claude/config.json` on macOS/Linu
   "mcpServers": {
     "ticktick": {
       "command": "python",
-      "args": ["/Users/PV/PycharmProjects/meLlamo/ticktick_mcp_server.py"],
+      "args": ["-m", "ticktick.ticktick_mcp_server"],
+      "cwd": "/Users/PV/PycharmProjects/Poppy",
       "env": {
         "TICKTICK_ACCESS_TOKEN": "your_access_token_here"
       }
@@ -111,21 +113,23 @@ Retrieve tasks from TickTick.
 
 ---
 
-### 2. `get_task_by_id`
+### 2. `get_all_tasks`
 
-Get a specific task by its ID.
+Retrieve tasks across all projects.
 
 **Parameters:**
-- `task_id` (required, string): The task ID
+- `include_completed` (optional, boolean): Include completed tasks (default: false)
+- `include_closed` (optional, boolean): Include closed projects (default: true)
 
 **Example:**
 ```json
 {
-  "task_id": "63f8a1234567890abcdef123"
+  "include_completed": false,
+  "include_closed": true
 }
 ```
 
-**Response:** JSON task object
+**Response:** JSON array of task objects with project metadata
 
 ---
 
@@ -163,6 +167,7 @@ Create a new task.
 Update an existing task.
 
 **Parameters:**
+- `project_id` (required, string): Project ID that owns the task
 - `task_id` (required, string): Task ID to update
 - `title` (optional, string): New title
 - `content` (optional, string): New content
@@ -173,6 +178,7 @@ Update an existing task.
 **Example:**
 ```json
 {
+  "project_id": "inbox123",
   "task_id": "63f8a1234567890abcdef123",
   "priority": 5,
   "content": "Updated description with more details"
@@ -183,25 +189,47 @@ Update an existing task.
 
 ---
 
-### 5. `complete_task`
+### 5. `delete_task`
 
-Mark a task as completed (shortcut for updating status to 2).
+Delete a task by its ID.
 
 **Parameters:**
+- `project_id` (required, string): Project ID that owns the task
+- `task_id` (required, string): Task ID to delete
+
+**Example:**
+```json
+{
+  "project_id": "inbox123",
+  "task_id": "63f8a1234567890abcdef123"
+}
+```
+
+**Response:** Empty response on success
+
+---
+
+### 6. `complete_task`
+
+Mark a task as completed using the dedicated complete endpoint.
+
+**Parameters:**
+- `project_id` (required, string): Project ID that owns the task
 - `task_id` (required, string): Task ID to complete
 
 **Example:**
 ```json
 {
+  "project_id": "inbox123",
   "task_id": "63f8a1234567890abcdef123"
 }
 ```
 
-**Response:** Updated task object with status=2
+**Response:** Completed task object
 
 ---
 
-### 6. `get_projects`
+### 7. `get_projects`
 
 Get all projects/lists.
 
@@ -282,7 +310,7 @@ A typical TickTick task object includes:
 
 To modify or extend the server:
 
-1. Edit `ticktick_mcp_server.py`
+1. Edit `ticktick/ticktick_mcp_server.py`
 2. The server uses the official `mcp` Python SDK
 3. All tools are async and communicate via stdio
 4. Add new tools by:

@@ -13,7 +13,7 @@ from typing import Optional, List, Dict, Any
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
-load_dotenv()
+load_dotenv(override=True)
 
 # === IMPORT SERVO CONTROLLER ===
 from agents.ServoController import ServoController
@@ -213,7 +213,7 @@ def get_response(user_input: str) -> str:
     conversation_history.append({"role": "user", "parts": vision_parts})
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3-flash-preview",
         contents=conversation_history,
         config=GenerateContentConfig(
             system_instruction=system_prompt,

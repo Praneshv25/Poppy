@@ -15,6 +15,7 @@ meLlamo/
 ├── search/                    # Search functionality module
 ├── tasks/                     # Task scheduling and management system
 ├── tests/                     # Test scripts
+├── ticktick/                  # TickTick MCP server and API client
 ├── wakeWord/                  # Wake word detection module
 ├── venv/                      # Python virtual environment
 ├── requirements.txt           # Python dependencies
@@ -33,8 +34,6 @@ Main agent scripts that interface with the robot and handle various functionalit
 - `voice.py` - Voice synthesis and audio output
 - `ServoController.py` - Hardware servo control interface
 - `robot_actions.py` - Robot action translation and execution
-- `ticktick_mcp_server.py` - TickTick task management MCP server
-- `ticktickToken.py` - TickTick authentication handler
 
 ### `/config/` - Configuration Files
 System prompts and configuration files:
@@ -90,7 +89,12 @@ Comprehensive task scheduling and execution system:
 - `tasks.db` - SQLite database for tasks
 - `check_scheduled_actions.py` - Utility to view/manage actions
 - `migrate_database.py` - Database migration script
-- `task.py` - Task data structures
+
+### `/ticktick/` - TickTick MCP Server
+TickTick task management integration via Model Context Protocol:
+- `ticktick_mcp_server.py` - MCP server with task CRUD tools
+- `ticktickToken.py` - OAuth2 authentication and token management
+- `task.py` - Task data class wrapper for TickTick API responses
 
 ### `/tests/` - Test Scripts
 Test scripts for various components:
@@ -112,6 +116,8 @@ After the reorganization, import paths have been updated throughout the codebase
 - `robot_actions` → `agents.robot_actions`
 - `voice` → `agents.voice`
 - `humanCentering` → `agents.humanCentering`
+- `ticktickToken` → `ticktick.ticktickToken`
+- `task` (TickTick) → `ticktick.task`
 
 ### File Path Updates
 - System prompts → `config/[prompt_name].txt`

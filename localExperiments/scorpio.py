@@ -31,7 +31,7 @@ llm = Llama.from_pretrained(
 	filename="SmolVLM-500M-Instruct-Q8_0.gguf",
 )
 
-load_dotenv()
+load_dotenv(override=True)
 
 # === GEMINI CLIENT SETUP ===
 client = genai.Client(api_key=os.getenv("API_KEY"))  # <-- Replace with your Gemini API key
