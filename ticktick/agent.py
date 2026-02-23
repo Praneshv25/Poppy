@@ -58,16 +58,31 @@ def _extract_text(response) -> str:
             return ""
 
 
-# Keywords for fast pre-filtering (avoids an LLM call for clearly unrelated queries)
+# ---------------------------------------------------------------------------
+# Keyword pre-filtering — avoids an LLM call for clearly unrelated queries
+# ---------------------------------------------------------------------------
+
+# Exact-substring keywords (fast check: any of these in query_lower → pass)
 TASK_KEYWORDS = [
-    "task", "todo", "to-do", "to do", "ticktick", "tick tick",
+    "task", "tasks", "todo", "to-do", "to do",
+    "ticktick", "tick tick", "tick-tick",
     "remind", "reminder", "deadline", "due date", "due tomorrow",
-    "complete", "finish", "check off", "mark done", "mark complete",
+    "complete", "finish", "finished",
+    "check off", "check it off", "checked off",
+    "mark done", "mark complete",
+    "mark it off", "mark it done", "mark it complete",
+    "mark off", "cross off", "cross it off",
     "add to my list", "add to list", "create task", "new task",
     "delete task", "remove task", "my tasks", "my projects",
     "what do i have to do", "what's on my list", "what do i need to do",
+    "done with", "completed it", "complete it",
     "project list", "inbox",
 ]
+
+# Compound keyword pairs — if BOTH a word from column A and column B appear
+# anywhere in the query, it's likely task-related even without an exact phrase.
+_COMPOUND_A = {"mark", "check", "cross", "tick"}
+_COMPOUND_B = {"off", "done", "complete", "finished"}
 
 
 def _get_system_prompt() -> str:
@@ -215,8 +230,15 @@ class TickTickAgent:
 
         # 1. Fast keyword pre-filter (no API call)
         query_lower = query.lower()
-        if not any(kw in query_lower for kw in TASK_KEYWORDS):
+        query_words = set(query_lower.split())
+
+        keyword_hit = any(kw in query_lower for kw in TASK_KEYWORDS)
+        compound_hit = bool(query_words & _COMPOUND_A) and bool(query_words & _COMPOUND_B)
+
+        if not keyword_hit and not compound_hit:
             return (False, "")
+
+        print(f"[TickTickAgent] Keyword hit for: \"{query[:80]}\"")
 
         # 2. Confirm with a quick LLM call
         context_str = ""
@@ -230,20 +252,34 @@ class TickTickAgent:
 
         validation_prompt = (
             f"{context_str}"
-            f'User said: "{query}"\n\n'
-            f"Is this a task management request (creating, viewing, completing, "
-            f"deleting, or modifying tasks/to-dos)? Answer ONLY 'Yes' or 'No'."
+            f'The user said: "{query}"\n\n'
+            f"Does this require an action on the user's task/to-do list?\n"
+            f"This includes: creating a task, viewing tasks, completing/checking-off "
+            f"a task, deleting a task, or modifying a task.\n"
+            f"It ALSO includes when the user says they finished something and "
+            f"wants it marked off, even if they don't explicitly say 'TickTick'.\n\n"
+            f"Answer ONLY 'Yes' or 'No'."
         )
 
         try:
             response = self._gemini_client.models.generate_content(
                 model=GEMINI_MODEL,
                 contents=validation_prompt,
-                config=GenerateContentConfig(temperature=0, max_output_tokens=10),
+                config=GenerateContentConfig(temperature=0, max_output_tokens=50),
             )
 
             reply_text = _extract_text(response)
-            if reply_text and "Yes" in reply_text:
+            print(f"[TickTickAgent] LLM validation → \"{reply_text}\"")
+
+            # If the LLM returned empty (thought_signature only) but keywords
+            # already matched, default to trying — better to attempt than ignore.
+            if not reply_text:
+                print("[TickTickAgent] Empty LLM response, keywords matched → proceeding.")
+                is_yes = True
+            else:
+                is_yes = "yes" in reply_text.lower()
+
+            if is_yes:
                 instruction = query
                 if context_str:
                     instruction = f"{context_str}User request: {query}"
@@ -251,6 +287,8 @@ class TickTickAgent:
                 result = self.ask(instruction)
                 print(f"[TickTickAgent] Handled: {result[:120]}...")
                 return (True, result)
+            else:
+                print(f"[TickTickAgent] LLM said No, skipping.")
         except Exception as e:
             print(f"[TickTickAgent] Validation error: {e}")
 
