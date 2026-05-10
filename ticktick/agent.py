@@ -103,8 +103,14 @@ IMPORTANT RULES:
 - After receiving tool results, summarize them clearly and concisely.
 - For operations that need a project_id and you don't have one, first call get_projects
   to find it, then proceed.
-- When creating tasks with due dates, use ISO 8601 format (e.g. "2026-02-20T09:00:00+0000").
-  Use the current date/time above to resolve relative dates like "today", "tomorrow", "next Monday", etc.
+- DATE HANDLING (critical):
+  - If the user specifies only a DATE (no specific time), use date-only format "YYYY-MM-DD"
+    and set "all_day": true. The MCP server will convert it to TickTick's all-day payload.
+  - If the user specifies a date AND a time, use ISO 8601: "YYYY-MM-DDTHH:MM:SS+0000"
+    and set "all_day": false. Example: "2026-02-25T14:00:00+0000" with all_day=false.
+  - NEVER add a time component when the user only asked for a date — this turns an
+    all-day task into a timed task with a duration, which is wrong.
+  - Use the current date/time above to resolve relative dates like "today", "tomorrow", etc.
 - Keep responses brief — you're reporting back to another agent.
 """
 
@@ -341,6 +347,27 @@ class TickTickAgent:
             print(f"[TickTickAgent] Connection error: {e}")
             self._ready.set()  # Unblock start() even on failure
 
+    async def _gemini_call_with_retry(self, contents, config, retries=2):
+        """Call Gemini with retry on transient 500/503 errors."""
+        last_err = None
+        for attempt in range(1 + retries):
+            try:
+                return self._gemini_client.models.generate_content(
+                    model=GEMINI_MODEL,
+                    contents=contents,
+                    config=config,
+                )
+            except Exception as e:
+                err_str = str(e)
+                if any(code in err_str for code in ("500", "503", "INTERNAL", "UNAVAILABLE")):
+                    last_err = e
+                    wait = 1.5 * (attempt + 1)
+                    print(f"[TickTickAgent] Gemini transient error (attempt {attempt+1}), retrying in {wait}s...")
+                    await asyncio.sleep(wait)
+                else:
+                    raise
+        raise last_err  # all retries exhausted
+
     async def _process_request(self, instruction: str) -> str:
         """Run the Gemini tool-calling loop for a single request."""
         system_prompt = _get_system_prompt()
@@ -351,16 +378,14 @@ class TickTickAgent:
             {"role": "user", "parts": [{"text": instruction}]},
         ]
 
+        gemini_config = GenerateContentConfig(
+            temperature=0.2,
+            max_output_tokens=2048,
+        )
+
         max_tool_rounds = 5
         for _ in range(max_tool_rounds):
-            response = self._gemini_client.models.generate_content(
-                model=GEMINI_MODEL,
-                contents=conversation,
-                config=GenerateContentConfig(
-                    temperature=0.2,
-                    max_output_tokens=2048,
-                ),
-            )
+            response = await self._gemini_call_with_retry(conversation, gemini_config)
 
             reply = _extract_text(response)
 

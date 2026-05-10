@@ -72,8 +72,13 @@ IMPORTANT RULES:
 - After receiving tool results, summarize them clearly for the user.
 - For operations that need a project_id and you don't have one, first call get_projects
   to find it, then proceed.
-- When creating tasks with due dates, use ISO 8601 format (e.g. "2026-02-20T09:00:00+0000").
-  Use the current date/time above to resolve relative dates like "today", "tomorrow", "next Monday", etc.
+- DATE HANDLING (critical):
+  - If the user specifies only a DATE (no specific time), use date-only format "YYYY-MM-DD"
+    and set "all_day": true. The MCP server will convert it to TickTick's all-day payload.
+  - If the user specifies a date AND a time, use ISO 8601: "YYYY-MM-DDTHH:MM:SS+0000"
+    and set "all_day": false.
+  - NEVER add a time component when the user only asked for a date.
+  - Use the current date/time above to resolve relative dates like "today", "tomorrow", "next Monday", etc.
 """
 
 

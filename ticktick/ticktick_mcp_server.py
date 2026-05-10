@@ -8,8 +8,10 @@ Supports retrieving, creating, updating, completing, and deleting tasks.
 import asyncio
 import json
 import os
+import re
 from typing import Optional, Dict, Any, List
 from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import time
 import logging
 from logging.handlers import RotatingFileHandler
@@ -43,6 +45,8 @@ if not logger.handlers:
 
 class TickTickAPI:
     """TickTick API client for task management."""
+
+    DEFAULT_TIMEZONE = "America/Indiana/Indianapolis"
     
     def __init__(self, access_token: Optional[str] = None):
         """
@@ -155,6 +159,79 @@ class TickTickAPI:
         endpoint = f"project/{project_id}/task/{task_id}"
         return self._make_request("GET", endpoint)
     
+    @staticmethod
+    def _is_date_only(date_str: str) -> bool:
+        """Check if a date string is date-only (no time component)."""
+        return bool(re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_str.strip()))
+
+    @staticmethod
+    def _local_tz_offset() -> str:
+        """Return the local timezone UTC offset as a string like '+0500' or '-0500'."""
+        now = datetime.now().astimezone()
+        offset = now.strftime("%z")  # e.g. "-0500", "+0530"
+        return offset if offset else "+0000"
+
+    @classmethod
+    def _task_timezone(cls) -> str:
+        """Return the IANA timezone used for TickTick date payloads."""
+        return os.getenv("TICKTICK_TIMEZONE", cls.DEFAULT_TIMEZONE)
+
+    @classmethod
+    def _task_tzinfo(cls):
+        """Return tzinfo for task payloads, falling back to the system timezone."""
+        try:
+            return ZoneInfo(cls._task_timezone())
+        except ZoneInfoNotFoundError:
+            return datetime.now().astimezone().tzinfo
+
+    @classmethod
+    def _format_ticktick_datetime(cls, dt: datetime) -> str:
+        """Format a datetime in TickTick's yyyy-MM-dd'T'HH:mm:ssZ shape."""
+        return dt.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+    @classmethod
+    def _build_due_date_payload(
+        cls,
+        due_date: str,
+        all_day: Optional[bool] = None
+    ) -> Dict[str, Any]:
+        """Normalize MCP date input to TickTick's dueDate/isAllDay/timeZone fields."""
+        if not isinstance(due_date, str) or not due_date.strip():
+            raise ValueError(
+                "Invalid due_date format. Use 'YYYY-MM-DD' for date-only or "
+                "'YYYY-MM-DDTHH:MM:SS+0000' with time."
+            )
+
+        due_date = due_date.strip()
+        timezone_name = cls._task_timezone()
+        tzinfo = cls._task_tzinfo()
+
+        if cls._is_date_only(due_date):
+            dt = datetime.strptime(due_date, "%Y-%m-%d").replace(tzinfo=tzinfo)
+            return {
+                "dueDate": cls._format_ticktick_datetime(dt),
+                "isAllDay": True,
+                "timeZone": timezone_name,
+            }
+
+        try:
+            normalized = due_date.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(normalized)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid due_date format: {str(e)}. "
+                "Use 'YYYY-MM-DD' for date-only or 'YYYY-MM-DDTHH:MM:SS+0000' with time."
+            )
+
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=tzinfo)
+
+        return {
+            "dueDate": cls._format_ticktick_datetime(dt),
+            "isAllDay": False,
+            "timeZone": timezone_name,
+        }
+
     def create_task(
         self,
         title: str,
@@ -163,7 +240,7 @@ class TickTickAPI:
         due_date: Optional[str] = None,
         priority: int = 0,
         tags: Optional[List[str]] = None,
-        all_day: bool = False
+        all_day: Optional[bool] = None
     ) -> Dict[str, Any]:
         """
         Create a new task in TickTick.
@@ -173,10 +250,11 @@ class TickTickAPI:
             title: Task title (required)
             project_id: Project to add task to (required)
             content: Task description/notes
-            due_date: Due date in ISO format (e.g., "2025-10-15T10:00:00+0000")
+            due_date: Due date — "YYYY-MM-DD" for all-day, or ISO 8601 with time
             priority: Priority level (0=None, 1=Low, 3=Medium, 5=High)
             tags: List of tag names
-            all_day: Whether the task is an all-day event
+            all_day: Whether the task is an all-day event.
+                     If None, auto-detected from due_date format.
         
         Returns:
             Created task dictionary
@@ -184,7 +262,6 @@ class TickTickAPI:
         task_data = {
             "title": title,
             "priority": priority,
-            "allDay": all_day
         }
         
         if content:
@@ -194,19 +271,9 @@ class TickTickAPI:
         task_data["projectId"] = project_id
         
         if due_date:
-            # Validate and format due date
-            try:
-                # Parse various date formats
-                if 'T' in due_date:
-                    dt = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
-                else:
-                    dt = datetime.fromisoformat(due_date)
-                task_data["dueDate"] = dt.strftime("%Y-%m-%dT%H:%M:%S%z")
-            except ValueError as e:
-                raise ValueError(
-                    f"Invalid due_date format: {str(e)}. "
-                    "Use ISO 8601 format: YYYY-MM-DDTHH:MM:SS+0000"
-                )
+            task_data.update(self._build_due_date_payload(due_date, all_day))
+        elif all_day is not None:
+            task_data["isAllDay"] = bool(all_day)
         
         if tags:
             task_data["tags"] = tags
@@ -222,7 +289,8 @@ class TickTickAPI:
         content: Optional[str] = None,
         status: Optional[int] = None,
         priority: Optional[int] = None,
-        due_date: Optional[str] = None
+        due_date: Optional[str] = None,
+        all_day: Optional[bool] = None
     ) -> Dict[str, Any]:
         """
         Update an existing task.
@@ -235,7 +303,8 @@ class TickTickAPI:
             content: New content
             status: Task status (0=active, 2=completed)
             priority: New priority level
-            due_date: New due date
+            due_date: New due date — "YYYY-MM-DD" for all-day, or ISO 8601 with time
+            all_day: Whether the task is all-day. Auto-detected from due_date if None.
         
         Returns:
             Updated task dictionary
@@ -253,11 +322,9 @@ class TickTickAPI:
         if priority is not None:
             current_task["priority"] = priority
         if due_date is not None:
-            if 'T' in due_date:
-                dt = datetime.fromisoformat(due_date.replace('Z', '+00:00'))
-            else:
-                dt = datetime.fromisoformat(due_date)
-            current_task["dueDate"] = dt.strftime("%Y-%m-%dT%H:%M:%S%z")
+            current_task.update(self._build_due_date_payload(due_date, all_day))
+        elif all_day is not None:
+            current_task["isAllDay"] = bool(all_day)
         endpoint = f"task/{task_id}"
         logger.debug(f"update_task body: {current_task}")
         return self._make_request("POST", endpoint, data=current_task)
@@ -507,7 +574,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "due_date": {
                         "type": "string",
-                        "description": "Due date in ISO 8601 format (e.g., '2025-10-15T10:00:00+0000')"
+                        "description": "Due date. Use 'YYYY-MM-DD' for date-only (all-day tasks) or 'YYYY-MM-DDTHH:MM:SS+0000' when a specific time is needed."
                     },
                     "priority": {
                         "type": "integer",
@@ -521,7 +588,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "all_day": {
                         "type": "boolean",
-                        "description": "Whether this is an all-day task (default: false)"
+                        "description": "Set true for all-day/date-only tasks (no specific time). Default: auto-detected from due_date format."
                     }
                 },
                 "required": ["title", "project_id"]
@@ -561,7 +628,11 @@ async def handle_list_tools() -> list[types.Tool]:
                     },
                     "due_date": {
                         "type": "string",
-                        "description": "New due date in ISO format"
+                        "description": "New due date. Use 'YYYY-MM-DD' for date-only or 'YYYY-MM-DDTHH:MM:SS+0000' with a specific time."
+                    },
+                    "all_day": {
+                        "type": "boolean",
+                        "description": "Set true for all-day/date-only tasks (no specific time). Default: auto-detected from due_date format."
                     }
                 },
                 "required": ["project_id", "task_id"]
@@ -667,7 +738,7 @@ async def handle_call_tool(
                 due_date=arguments.get("due_date"),
                 priority=arguments.get("priority", 0),
                 tags=arguments.get("tags"),
-                all_day=arguments.get("all_day", False)
+                all_day=arguments.get("all_day"),  # None → auto-detect from due_date
             )
             return [types.TextContent(
                 type="text",
@@ -695,7 +766,8 @@ async def handle_call_tool(
                 content=arguments.get("content"),
                 status=arguments.get("status"),
                 priority=arguments.get("priority"),
-                due_date=arguments.get("due_date")
+                due_date=arguments.get("due_date"),
+                all_day=arguments.get("all_day"),  # None → auto-detect from due_date
             )
             return [types.TextContent(
                 type="text",
